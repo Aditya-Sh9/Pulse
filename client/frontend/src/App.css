@@ -1,0 +1,41 @@
+/* RESET & BASE */
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #111; /* Deep dark background */
+  color: #d1d5db; /* Light gray text */
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden; /* Prevent body scroll */
+}
+
+/* Scrollbar customization for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #1e1f21; 
+}
+::-webkit-scrollbar-thumb {
+  background: #3f4148; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555; 
+}
+
+/* Utilities */
+.btn-icon {
+  @apply p-1.5 rounded-md hover:bg-white/10 text-gray-400 hover:text-gray-100 transition-colors;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+}

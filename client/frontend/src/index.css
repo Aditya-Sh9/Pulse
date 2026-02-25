@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/* Global reset and app defaults */
+:root {
+  --body-bg: #f8fafc;
+  --text: #0f172a;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F1117; 
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2B2D31; 
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3E4045; 
+}
+
+::-webkit-scrollbar-corner {
+  background: #0F1117;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background-color: #0F1117;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background-color: #0F1117;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--body-bg);
+  color: var(--text);
+}
+
+/* Small utility defaults for non-tailwind elements */
+a { color: #6366f1 }
+
+/* Add to index.css */
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
