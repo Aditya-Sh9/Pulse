@@ -18,6 +18,22 @@ const STATUS_COLORS = {
   'To Do': '#64748B'        // Slate
 }
 
+function CustomTooltip({ active, payload, label }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#18191B] border border-[#2B2D31] p-3 rounded-lg shadow-xl outline-none">
+        <p className="text-white font-bold text-xs mb-2 uppercase tracking-wider">{label || payload[0].name}</p>
+        {payload.map((entry, index) => (
+          <p key={index} className="text-sm flex items-center gap-2 font-medium" style={{ color: entry.color || entry.fill }}>
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
+            {entry.name}: <span className="text-white ml-auto pl-4">{entry.value}</span>
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
 
 export default function DashboardHome() {
   const { tasks: allTasks, members, projects, openTaskDrawer } = useProject()
@@ -41,7 +57,6 @@ export default function DashboardHome() {
 
   // --- UPCOMING DEADLINES ---
   const upcomingTasks = useMemo(() => {
-    const now = new Date()
     return tasks
       .filter(t => t.dueDate && t.status !== 'COMPLETE' && !t.isArchived)
       .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
@@ -66,47 +81,28 @@ export default function DashboardHome() {
     }).sort((a, b) => b.Tasks - a.Tasks)
   }, [members, tasks])
 
-  // --- AREA CHART DATA (Stable Activity Trend) ---
+  // --- AREA CHART DATA (Real Due-Date Trend) ---
   const areaData = useMemo(() => {
     const data = []
-    const currentRemaining = todoTasks + inProgressTasks
-    const currentCompleted = completedTasks
 
-    // Generates a stable burndown curve ending on the exact current actual values
     for (let i = 6; i >= 0; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
+      const dateKey = d.toISOString().slice(0, 10)
+
+      const dueTasks = tasks.filter(task => task.dueDate === dateKey && !task.isArchived)
+      const completedDueTasks = dueTasks.filter(task => task.status === 'COMPLETE')
 
       data.push({
         name: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        Remaining: currentRemaining + Math.floor(i * 1.5),
-        Completed: Math.max(0, currentCompleted - Math.floor(i * 0.8)),
+        Due: dueTasks.length,
+        Completed: completedDueTasks.length
       })
     }
     return data
-  }, [todoTasks, inProgressTasks, completedTasks])
-
-  // --- CUSTOM TOOLTIP FOR CHARTS ---
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#18191B] border border-[#2B2D31] p-3 rounded-lg shadow-xl outline-none">
-          <p className="text-white font-bold text-xs mb-2 uppercase tracking-wider">{label || payload[0].name}</p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-sm flex items-center gap-2 font-medium" style={{ color: entry.color || entry.fill }}>
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
-              {entry.name}: <span className="text-white ml-auto pl-4">{entry.value}</span>
-            </p>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
+  }, [tasks])
 
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-
-  // throw new Error("Simulated crash to test Error Boundary");
 
   return (
 
@@ -170,18 +166,18 @@ export default function DashboardHome() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 relative z-10">
-        {/* Main Area Chart - Burndown Trend */}
+        {/* Main Area Chart - Due-Date Trend */}
         <div className="lg:col-span-2 bg-[#1E1F21]/80 backdrop-blur-xl border border-[#2B2D31] rounded-2xl p-6 shadow-xl animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <TrendingUp size={16} className="text-purple-400" /> 7-Day Activity
+              <TrendingUp size={16} className="text-purple-400" /> 7-Day Due Trend
             </h3>
           </div>
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={areaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="colorRemaining" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="colorDue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
                   </linearGradient>
@@ -194,7 +190,7 @@ export default function DashboardHome() {
                 <XAxis dataKey="name" stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} tickMargin={10} />
                 <YAxis stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} tickMargin={10} allowDecimals={false} />
                 <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: '#3E4045', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                <Area type="monotone" dataKey="Remaining" stroke="#8B5CF6" strokeWidth={3} fillOpacity={1} fill="url(#colorRemaining)" activeDot={{ r: 6, fill: '#8B5CF6', stroke: '#1E1F21', strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="Due" stroke="#8B5CF6" strokeWidth={3} fillOpacity={1} fill="url(#colorDue)" activeDot={{ r: 6, fill: '#8B5CF6', stroke: '#1E1F21', strokeWidth: 2 }} />
                 <Area type="monotone" dataKey="Completed" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorCompleted)" activeDot={{ r: 6, fill: '#10B981', stroke: '#1E1F21', strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>

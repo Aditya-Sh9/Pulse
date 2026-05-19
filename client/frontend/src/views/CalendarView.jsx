@@ -19,12 +19,12 @@ const TabLink = ({ to, icon: Icon, label }) => (
 export default function CalendarView() {
   const { projectId } = useParams()
   const navigate = useNavigate()
-  const { tasks, projects, openTaskDrawer } = useProject() // Added projects to get name
+  const { tasks, projects, members, addTask, openTaskDrawer } = useProject()
   const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 1)) // Feb 2026
 
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [defaultStatus, setDefaultStatus] = useState('TO DO')
+  const [defaultStatus] = useState('TO DO')
 
   // Helper to ensure we are comparing strings
   const currentProject = projects.find(p => String(p.id) === String(projectId))
@@ -36,7 +36,7 @@ export default function CalendarView() {
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay()
 
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
-  const emptyDays = Array.from({ length: firstDayOfMonth }, (_, i) => null)
+  const emptyDays = Array.from({ length: firstDayOfMonth }, () => null)
   const allDays = [...emptyDays, ...days]
 
   const getTasksForDay = (day) => {

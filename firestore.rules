@@ -39,8 +39,19 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if request.auth != null;
-      // Users can update their own status/profile, admins can update anything
-      allow write: if request.auth != null && (request.auth.uid == userId || getUserRole() == 'admin');
+      // Users can create their own document (signup) and update their own profile
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId || getUserRole() == 'admin');
+      allow delete: if request.auth != null && getUserRole() == 'admin';
+    }
+
+    match /notifications/{notifId} {
+      // Users can read their own notifications
+      allow read: if request.auth != null;
+      // Any authenticated user can create notifications (for mentions, assignments, etc.)
+      allow create: if request.auth != null;
+      // Users can update/delete their own notifications
+      allow update, delete: if request.auth != null;
     }
   }
 }

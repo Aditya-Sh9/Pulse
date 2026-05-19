@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   List, Calendar, Kanban, Table, Plus, Filter, Search,
   ChevronDown, Flag, Circle, MoreHorizontal,
-  UserCircle, GripVertical, LayoutGrid, Copy, Link, ExternalLink,
+  UserCircle, LayoutGrid, Copy, Link, ExternalLink,
   Pencil, Copy as DuplicateIcon, Bell, Trash2, Archive, CheckCircle2,
   X
 } from 'lucide-react'
@@ -83,8 +83,8 @@ export default function ListView() {
   const { projectId } = useParams()
   const navigate = useNavigate()
   // Added getTasksByProject to destructuring to use the helper logic
-  const { tasks, addTask, updateTask, deleteTask, projects, members, getMemberById, getTasksByProject, openTaskDrawer } = useProject()
-  const { currentUser, userRole } = useAuth()
+  const { tasks, addTask, updateTask, deleteTask, projects, members, getMemberById, openTaskDrawer, showToast } = useProject()
+  const { userRole } = useAuth()
 
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
 
@@ -93,7 +93,6 @@ export default function ListView() {
   const [activeMenuId, setActiveMenuId] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editText, setEditText] = useState('')
-  const [draggedItem, setDraggedItem] = useState(null)
   const [defaultStatus, setDefaultStatus] = useState('TO DO')
   const [showArchived, setShowArchived] = useState(false)
 
@@ -168,12 +167,18 @@ export default function ListView() {
 
   // FIX: Removed parseInt
   const duplicateTask = (task) => {
-    const { id, ...rest } = task
+    const { id: _id, ...rest } = task
     addTask({
       ...rest,
       title: `${task.title} (Copy)`,
       projectId: projectId // Passed as string
     })
+    setActiveMenuId(null)
+  }
+
+  const copyTaskId = (task) => {
+    navigator.clipboard.writeText(task.id)
+    showToast('Task ID copied', 'success')
     setActiveMenuId(null)
   }
 
@@ -190,21 +195,6 @@ export default function ListView() {
     setEditingId(null)
   }
 
-  // Drag & Drop
-  const handleDragStart = (e, task) => {
-    setDraggedItem(task)
-    e.dataTransfer.effectAllowed = "move"
-  }
-
-  const handleDragOver = (e) => {
-    e.preventDefault()
-  }
-
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setDraggedItem(null)
-    // Logic to reorder would go here
-  }
   return (
     <>
       {/* Header & Tabs */}
@@ -322,24 +312,16 @@ export default function ListView() {
         </div>
 
         {/* Table Rows */}
-        <div className="mb-2" onDragOver={handleDragOver} onDrop={handleDrop}>
+        <div className="mb-2">
           {filteredTasks.map((task) => (
             <div
               key={task.id}
-              draggable
               onClick={() => openTaskDrawer(task)}
-              onDragStart={(e) => handleDragStart(e, task)}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
               className="group relative flex items-center px-2 py-2 border-b border-[#2B2D31] hover:bg-[#1E1F21] text-sm text-gray-300 transition-colors cursor-default"
             >
 
               {/* Title Column */}
               <div className="flex-1 flex items-center gap-3 relative overflow-hidden">
-                <div className="absolute -left-6 opacity-0 group-hover:opacity-100 cursor-grab text-gray-600 p-1">
-                  <GripVertical size={14} />
-                </div>
-
                 <div
                   className="group/check cursor-pointer text-gray-500 hover:text-green-500 flex-shrink-0"
                   onClick={(e) => { e.stopPropagation(); handleUpdateTask(task.id, 'status', task.status === 'COMPLETE' ? 'TO DO' : 'COMPLETE') }}
@@ -466,14 +448,14 @@ export default function ListView() {
                 {activeMenuId === task.id && (
                   <div ref={menuRef} className="absolute right-0 top-8 w-60 bg-[#2B2D31] border border-[#3E4045] rounded-lg shadow-2xl z-50 p-1.5 flex flex-col gap-1">
                     <div className="grid grid-cols-3 gap-1 mb-1">
-                      <button className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Link size={12} /> Link</button>
-                      <button className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Copy size={12} /> ID</button>
-                      <button className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><ExternalLink size={12} /> New</button>
+                      <button onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Current view link copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Link size={12} /> Link</button>
+                      <button onClick={() => copyTaskId(task)} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Copy size={12} /> ID</button>
+                      <button onClick={() => { openTaskDrawer(task); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><ExternalLink size={12} /> Open</button>
                     </div>
                     <div className="h-px bg-[#3E4045] my-0.5" />
                     <MenuItem icon={Pencil} label="Rename" onClick={() => startEditing(task)} />
                     <MenuItem icon={DuplicateIcon} label="Duplicate" onClick={() => duplicateTask(task)} />
-                    <MenuItem icon={Bell} label="Remind me" onClick={() => { setActiveMenuId(null); alert(`Reminder set for: ${task.title}. We'll notify you when it's due!`); }} />
+                    <MenuItem icon={Bell} label="Remind me" onClick={() => { setActiveMenuId(null); showToast('Reminders are not configured for this MVP yet.', 'info'); }} />
                     <MenuItem icon={Archive} label={task.isArchived ? "Unarchive" : "Archive"} onClick={() => handleUpdateTask(task.id, 'isArchived', !task.isArchived)} />
                     <div className="h-px bg-[#3E4045] my-0.5" />
                     <MenuItem icon={Trash2} label="Delete" danger={true} onClick={() => handleDeleteTask(task.id)} />

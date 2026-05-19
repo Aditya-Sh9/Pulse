@@ -1,7 +1,6 @@
 const cron = require('node-cron');
 const admin = require('../config/firebase-config');
 
-// 👉 UPDATED CODE STARTS HERE
 // Run every night at midnight to delete read notifications older than 7 days
 cron.schedule('0 0 * * *', async () => {
   try {
@@ -28,4 +27,3 @@ cron.schedule('0 0 * * *', async () => {
     console.error('Cron job error:', error);
   }
 });
-// 👉 UPDATED CODE ENDS HERE

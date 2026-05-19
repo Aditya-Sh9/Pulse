@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useProject } from '../context/ProjectContext'
@@ -27,7 +27,6 @@ export default function Topbar() {
 
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
 
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -46,33 +45,31 @@ export default function Topbar() {
     ? currentUser.displayName.charAt(0).toUpperCase()
     : (currentUser?.email?.charAt(0).toUpperCase() || 'U')
 
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return []
 
-      const taskResults = tasks.filter(t =>
-        (t.title && t.title.toLowerCase().includes(query)) ||
-        (t.description && t.description.toLowerCase().includes(query))
-      ).map(t => ({ ...t, searchType: 'task' }));
+    const query = searchQuery.toLowerCase()
 
-      const projectResults = projects.filter(p =>
-        p.name && p.name.toLowerCase().includes(query)
-      ).map(p => ({ ...p, searchType: 'project' }));
+    const taskResults = tasks.filter(t =>
+      (t.title && t.title.toLowerCase().includes(query)) ||
+      (t.description && t.description.toLowerCase().includes(query))
+    ).map(t => ({ ...t, searchType: 'task' }))
 
-      const spaceResults = spaces.filter(s =>
-        s.name && s.name.toLowerCase().includes(query)
-      ).map(s => ({ ...s, searchType: 'space' }));
+    const projectResults = projects.filter(p =>
+      p.name && p.name.toLowerCase().includes(query)
+    ).map(p => ({ ...p, searchType: 'project' }))
 
-      const memberResults = members.filter(m =>
-        (m.name && m.name.toLowerCase().includes(query)) ||
-        (m.email && m.email.toLowerCase().includes(query)) ||
-        (m.role && m.role.toLowerCase().includes(query))
-      ).map(m => ({ ...m, searchType: 'member' }));
+    const spaceResults = spaces.filter(s =>
+      s.name && s.name.toLowerCase().includes(query)
+    ).map(s => ({ ...s, searchType: 'space' }))
 
-      setSearchResults([...taskResults, ...projectResults, ...spaceResults, ...memberResults])
-    } else {
-      setSearchResults([])
-    }
+    const memberResults = members.filter(m =>
+      (m.name && m.name.toLowerCase().includes(query)) ||
+      (m.email && m.email.toLowerCase().includes(query)) ||
+      (m.role && m.role.toLowerCase().includes(query))
+    ).map(m => ({ ...m, searchType: 'member' }))
+
+    return [...taskResults, ...projectResults, ...spaceResults, ...memberResults]
   }, [searchQuery, tasks, projects, spaces, members])
 
   useEffect(() => {
@@ -257,7 +254,7 @@ export default function Topbar() {
               </div>
               <div className="p-1">
                 <button
-                  onClick={() => { setHelpOpen(false); showToast('Documentation opening soon...', 'info'); }}
+                  onClick={() => { setHelpOpen(false); showToast('Documentation is not configured for this MVP yet.', 'info'); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-300 hover:bg-[#2B2D31] hover:text-white rounded-lg transition-colors"
                 >
                   <BookOpen size={16} /> Documentation
@@ -454,7 +451,7 @@ export default function Topbar() {
                 autoFocus
               ></textarea>
               <button
-                onClick={() => { setShowContact(false); showToast('Message sent to admins.', 'success'); }}
+                onClick={() => { setShowContact(false); showToast('Admin contact workflow is not configured for this MVP yet.', 'info'); }}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl transition-colors text-sm"
               >
                 Send Message

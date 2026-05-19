@@ -1,12 +1,9 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Activity, ChevronDown, Menu, X, Zap, Shield, Globe } from 'lucide-react'
+import { ArrowRight, Activity, ChevronDown, Menu, X } from 'lucide-react'
 
-export default function Navbar() {
-  const navigate = useNavigate()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-
-  const NavItem = ({ label, hasDropdown }) => (
+function NavItem({ label, hasDropdown }) {
+  return (
     <div className="group relative flex items-center gap-1.5 cursor-pointer font-medium text-slate-600 hover:text-purple-600 transition-colors text-sm tracking-wide">
       {label}
       {hasDropdown && (
@@ -14,6 +11,11 @@ export default function Navbar() {
       )}
     </div>
   )
+}
+
+export default function Navbar() {
+  const navigate = useNavigate()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 transition-all duration-300 supports-[backdrop-filter]:bg-white/60">

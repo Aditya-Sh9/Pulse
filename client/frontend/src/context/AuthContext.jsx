@@ -10,7 +10,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence
 } from 'firebase/auth'
-import { doc, setDoc, getDoc, collection, updateDoc } from 'firebase/firestore'
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '../config/firebase'
 
 const AuthContext = createContext()
@@ -21,18 +21,26 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Helper: Fetch user role from Firestore
-  const fetchUserRole = async (uid) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid))
-      if (userDoc.exists()) {
-        return userDoc.data().role || 'employee'
+  // Helper: Fetch user role from Firestore (with retry for auth token propagation)
+  const fetchUserRole = async (uid, retries = 2) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', uid))
+        if (userDoc.exists()) {
+          return userDoc.data().role || 'employee'
+        }
+        return 'employee'
+      } catch (err) {
+        // On permission-denied, wait briefly for auth token to propagate then retry
+        if (i < retries - 1 && err.code === 'permission-denied') {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          continue
+        }
+        console.error('Error fetching user role:', err)
+        return 'employee'
       }
-      return 'employee'
-    } catch (err) {
-      console.error('Error fetching user role:', err)
-      return 'employee'
     }
+    return 'employee'
   }
 
   // Helper: Create user document in Firestore

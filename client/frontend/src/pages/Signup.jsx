@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, User, ArrowRight, Zap, Activity } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Zap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-export default function Signup({ onAuth }) {
+export default function Signup() {
   const navigate = useNavigate()
   const { signup, googleSignIn, error: authError } = useAuth()
   const [name, setName] = useState('')
@@ -47,7 +47,7 @@ export default function Signup({ onAuth }) {
       {/* --- BACKGROUND ELEMENTS --- */}
 
       {/* 1. Grain Texture Overlay */}
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-20 pointer-events-none"></div>
 
       {/* 2. Animated Pulse Line (ECG) */}
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">

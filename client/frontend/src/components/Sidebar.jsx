@@ -9,6 +9,20 @@ import {
   ChevronRight, ChevronDown, LayoutGrid, Folder, Star, Trash2, Trophy, Settings, Users, Activity
 } from 'lucide-react'
 
+function NavItem({ icon: Icon, label, path, badge, isActive, onNavigate }) {
+  return (
+    <div
+      onClick={() => onNavigate(path)}
+      className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium transition-colors mb-0.5
+      ${isActive ? 'bg-[#3C245C] text-white' : 'text-gray-400 hover:bg-[#2B2D31] hover:text-gray-100'}`}
+    >
+      <Icon size={16} />
+      <span className="flex-1">{label}</span>
+      {badge && <span className="bg-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full text-white">{badge}</span>}
+    </div>
+  )
+}
+
 export default function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -16,7 +30,6 @@ export default function Sidebar() {
 
   const { userRole, currentUser } = useAuth()
 
-  const [showNewProjectInput, setShowNewProjectInput] = useState(false)
   const [activeSpaceInput, setActiveSpaceInput] = useState(null)
   const [newProjectName, setNewProjectName] = useState('')
 
@@ -46,22 +59,6 @@ export default function Sidebar() {
 
   const displayName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'My Space'
 
-  const NavItem = ({ icon: Icon, label, path, badge }) => {
-    const isActive = location.pathname === path
-
-    return (
-      <div
-        onClick={() => navigate(path)}
-        className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium transition-colors mb-0.5
-        ${isActive ? 'bg-[#3C245C] text-white' : 'text-gray-400 hover:bg-[#2B2D31] hover:text-gray-100'}`}
-      >
-        <Icon size={16} />
-        <span className="flex-1">{label}</span>
-        {badge && <span className="bg-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full text-white">{badge}</span>}
-      </div>
-    )
-  }
-
   const handleAddProject = (spaceId) => {
     if (newProjectName.trim()) {
       addProject({
@@ -70,7 +67,6 @@ export default function Sidebar() {
         icon: 'square'
       })
       setNewProjectName('')
-      setShowNewProjectInput(false)
       setActiveSpaceInput(null)
     }
   }
@@ -130,12 +126,12 @@ export default function Sidebar() {
 
       <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
         <div className="mb-6">
-          <NavItem icon={Home} label="Home" path="/dashboard" />
-          <NavItem icon={Inbox} label="Inbox" path="/dashboard/inbox" />
-          <NavItem icon={MessageSquare} label="Messages" path="/dashboard/messages" />
-          <NavItem icon={LayoutGrid} label="Team" path="/dashboard/team" />
-          <NavItem icon={Trophy} label="Leaderboard" path="/dashboard/leaderboard" />
-          <NavItem icon={CheckCircle} label="My Tasks" path="/dashboard/my-tasks" />
+          <NavItem icon={Home} label="Home" path="/dashboard" isActive={location.pathname === '/dashboard'} onNavigate={navigate} />
+          <NavItem icon={Inbox} label="Inbox" path="/dashboard/inbox" isActive={location.pathname === '/dashboard/inbox'} onNavigate={navigate} />
+          <NavItem icon={MessageSquare} label="Messages" path="/dashboard/messages" isActive={location.pathname === '/dashboard/messages'} onNavigate={navigate} />
+          <NavItem icon={LayoutGrid} label="Team" path="/dashboard/team" isActive={location.pathname === '/dashboard/team'} onNavigate={navigate} />
+          <NavItem icon={Trophy} label="Leaderboard" path="/dashboard/leaderboard" isActive={location.pathname === '/dashboard/leaderboard'} onNavigate={navigate} />
+          <NavItem icon={CheckCircle} label="My Tasks" path="/dashboard/my-tasks" isActive={location.pathname === '/dashboard/my-tasks'} onNavigate={navigate} />
         </div>
 
         {favorites.length > 0 && (

@@ -140,6 +140,7 @@ export const ProjectProvider = ({ children }) => {
 
   // Fetch Users
   useEffect(() => {
+    if (!currentUser) return;
     const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
       const usersList = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -153,28 +154,31 @@ export const ProjectProvider = ({ children }) => {
       setMembers(usersList)
     })
     return () => unsubscribe()
-  }, [])
+  }, [currentUser])
 
   // Fetch Spaces from Firestore
   useEffect(() => {
+    if (!currentUser) return;
     const q = query(collection(db, 'spaces'), orderBy('createdAt', 'asc'))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setSpaces(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
     })
     return () => unsubscribe()
-  }, [])
+  }, [currentUser])
 
   // Fetch Projects
   useEffect(() => {
+    if (!currentUser) return;
     const q = query(collection(db, 'projects'), orderBy('createdAt', 'asc'))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
     })
     return () => unsubscribe()
-  }, [])
+  }, [currentUser])
 
   // Fetch Tasks
   useEffect(() => {
+    if (!currentUser) return;
     const q = query(collection(db, 'tasks'))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const freshTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
@@ -187,7 +191,7 @@ export const ProjectProvider = ({ children }) => {
       })
     })
     return () => unsubscribe()
-  }, [])
+  }, [currentUser])
 
   // Fetch Notifications
   useEffect(() => {

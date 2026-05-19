@@ -4,7 +4,7 @@ import { useProject } from '../context/ProjectContext'
 import { useAuth } from '../context/AuthContext'
 import {
   List, Calendar, Kanban, Table, Plus, Filter, Search,
-  ChevronDown, LayoutGrid, Flag, UserCircle, CheckCircle2, Circle
+  ChevronDown, LayoutGrid, Flag, CheckCircle2, Circle
 } from 'lucide-react'
 import CreateTaskForm from '../components/CreateTaskForm'
 
@@ -34,7 +34,7 @@ export default function TableView() {
   const { projectId } = useParams()
   const navigate = useNavigate()
   const { tasks, updateTask, addTask, members, getMemberById, projects, openTaskDrawer } = useProject()
-  const { currentUser, userRole } = useAuth()
+  const { userRole } = useAuth()
 
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
 
@@ -43,7 +43,7 @@ export default function TableView() {
   const [editValue, setEditValue] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('') // For the "Quick Add" row
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [defaultStatus, setDefaultStatus] = useState('TO DO')
+  const [defaultStatus] = useState('TO DO')
 
   // 1. Resolve Project & Tasks (String ID Fix)
   const currentProject = projects.find(p => String(p.id) === String(projectId))
@@ -186,6 +186,7 @@ export default function TableView() {
           </span>
         )
       case 'assignee':
+      {
         const assignee = getMemberById(task.assigneeId)
         return (
           <div
@@ -204,6 +205,7 @@ export default function TableView() {
             </span>
           </div>
         )
+      }
       case 'dueDate':
         return (
           <span className={task.dueDate ? 'text-gray-300' : 'text-gray-600 italic'}>
@@ -211,6 +213,7 @@ export default function TableView() {
           </span>
         )
       case 'priority':
+      {
         const PriorityIcon = PRIORITIES[task.priority]?.icon || Flag
         return (
           <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${PRIORITIES[task.priority]?.color || 'text-slate-500 border-slate-700'}`}>
@@ -218,6 +221,7 @@ export default function TableView() {
             {task.priority}
           </div>
         )
+      }
       case 'status':
         return (
           <div className="flex items-center justify-center gap-2">

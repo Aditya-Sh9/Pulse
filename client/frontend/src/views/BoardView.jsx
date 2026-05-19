@@ -41,8 +41,8 @@ const MenuItem = ({ icon: Icon, label, onClick, danger }) => (
 export default function BoardView() {
   const { projectId } = useParams()
   const navigate = useNavigate()
-  const { tasks, addTask, updateTask, deleteTask, moveTask, members, getMemberById, projects, openTaskDrawer } = useProject()
-  const { currentUser, userRole } = useAuth()
+  const { tasks, addTask, updateTask, deleteTask, moveTask, members, getMemberById, projects, openTaskDrawer, showToast } = useProject()
+  const { userRole } = useAuth()
 
   // UI States
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
@@ -91,7 +91,7 @@ export default function BoardView() {
   }
 
   const duplicateTask = (task) => {
-    const { id, ...rest } = task
+    const { id: _id, ...rest } = task
     addTask({
       ...rest,
       title: `${task.title} (Copy)`,
@@ -228,7 +228,7 @@ export default function BoardView() {
                     {activeColMenuId === column.id && (
                       <div ref={menuRef} className="absolute right-0 top-8 w-48 bg-[#2B2D31] border border-[#3E4045] rounded-lg shadow-2xl z-50 p-1 flex flex-col">
                         <MenuItem icon={Plus} label="Add Task" onClick={() => { setDefaultStatus(column.id); setShowCreateModal(true); setActiveColMenuId(null); }} />
-                        <MenuItem icon={Trash2} label="Clear Column" danger={true} onClick={() => alert(`Cleared ${column.label} column!`)} />
+                        <div className="px-2 py-1.5 text-[11px] text-gray-500">No bulk actions available.</div>
                       </div>
                     )}
                   </div>
@@ -263,14 +263,14 @@ export default function BoardView() {
                           {activeMenuId === task.id && (
                             <div ref={menuRef} className="absolute right-0 top-6 w-60 bg-[#2B2D31] border border-[#3E4045] rounded-lg shadow-2xl z-50 p-1.5 flex flex-col gap-1 cursor-default" onClick={e => e.stopPropagation()}>
                               <div className="grid grid-cols-3 gap-1 mb-1">
-                                <button className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Link size={12} /> Link</button>
-                                <button className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Copy size={12} /> ID</button>
-                                <button className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><ExternalLink size={12} /> New</button>
+                                <button onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Current view link copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Link size={12} /> Link</button>
+                                <button onClick={() => { navigator.clipboard.writeText(task.id); showToast('Task ID copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Copy size={12} /> ID</button>
+                                <button onClick={() => { openTaskDrawer(task); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><ExternalLink size={12} /> Open</button>
                               </div>
                               <div className="h-px bg-[#3E4045] my-0.5" />
                               <MenuItem icon={Pencil} label="Rename" onClick={() => { setActiveMenuId(null); openTaskDrawer(task); }} />
                               <MenuItem icon={DuplicateIcon} label="Duplicate" onClick={() => duplicateTask(task)} />
-                              <MenuItem icon={Bell} label="Remind me" onClick={() => { setActiveMenuId(null); alert(`Reminder set for: ${task.title}. We'll notify you soon!`); }} />
+                              <MenuItem icon={Bell} label="Remind me" onClick={() => { setActiveMenuId(null); showToast('Reminders are not configured for this MVP yet.', 'info'); }} />
                               <MenuItem icon={Archive} label={task.isArchived ? "Unarchive" : "Archive"} onClick={() => handleUpdateTask(task.id, 'isArchived', !task.isArchived)} />
                               <div className="h-px bg-[#3E4045] my-0.5" />
                               <MenuItem icon={Trash2} label="Delete" danger={true} onClick={() => handleDeleteTask(task.id)} />

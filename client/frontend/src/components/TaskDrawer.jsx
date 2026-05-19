@@ -14,6 +14,20 @@ const PRIORITIES = {
   Low: { color: 'text-slate-400 bg-slate-400/10 border-slate-400/20' }
 }
 
+function TaskDescriptionEditor({ initialDescription, onSave }) {
+  const [description, setDescription] = useState(initialDescription)
+
+  return (
+    <textarea
+      value={description}
+      onChange={(e) => setDescription(e.target.value)}
+      onBlur={() => onSave(description)}
+      placeholder="Add more details to this task..."
+      className="w-full min-h-[120px] bg-[#1E1F21] border border-[#2B2D31] rounded-xl p-4 text-sm text-white focus:outline-none focus:border-purple-500 resize-y transition-colors placeholder-slate-600"
+    />
+  )
+}
+
 export default function TaskDrawer() {
   const {
     activeTask, isDrawerOpen, closeTaskDrawer, updateTask,
@@ -23,7 +37,6 @@ export default function TaskDrawer() {
   const { currentUser, userRole } = useAuth()
 
   const [newSubtask, setNewSubtask] = useState('')
-  const [description, setDescription] = useState('')
   const [comments, setComments] = useState([])
   const [activities, setActivities] = useState([])
   const [activeTab, setActiveTab] = useState('comments') // 'comments' | 'activity'
@@ -33,13 +46,6 @@ export default function TaskDrawer() {
   // Edit subtask state
   const [editingSubtaskId, setEditingSubtaskId] = useState(null)
   const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('')
-
-  // Initialize fields when task opens
-  useEffect(() => {
-    if (activeTask) {
-      setDescription(activeTask.description || '')
-    }
-  }, [activeTask])
 
   // Real-time comments & activities
   useEffect(() => {
@@ -227,12 +233,10 @@ export default function TaskDrawer() {
               <div className="flex items-center gap-2 text-sm font-bold text-white uppercase tracking-wider">
                 <AlignLeft size={16} className="text-slate-500" /> Description
               </div>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={() => handleUpdate('description', description)}
-                placeholder="Add more details to this task..."
-                className="w-full min-h-[120px] bg-[#1E1F21] border border-[#2B2D31] rounded-xl p-4 text-sm text-white focus:outline-none focus:border-purple-500 resize-y transition-colors placeholder-slate-600"
+              <TaskDescriptionEditor
+                key={activeTask.id}
+                initialDescription={activeTask.description || ''}
+                onSave={(nextDescription) => handleUpdate('description', nextDescription)}
               />
             </div>
 

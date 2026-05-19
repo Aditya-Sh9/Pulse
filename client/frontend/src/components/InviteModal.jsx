@@ -1,26 +1,17 @@
 import React, { useState } from 'react'
-// 👉 UPDATED CODE STARTS HERE
-// Removed emailjs import
 import { X, Mail, Send, CheckCircle2, AlertCircle, Copy } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useProject } from '../context/ProjectContext' // Added ProjectContext to get apiFetch
-// 👉 UPDATED CODE ENDS HERE
+import { useProject } from '../context/ProjectContext'
 
 export default function InviteModal({ isOpen, onClose }) {
   const { currentUser } = useAuth()
   
-  // 👉 UPDATED CODE STARTS HERE
-  const { apiFetch } = useProject() // Pull in the backend API helper
-  // 👉 UPDATED CODE ENDS HERE
+  const { apiFetch, showToast } = useProject()
   
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState('idle') // idle, sending, success, error
   
   if (!isOpen) return null
-
-  // 👉 UPDATED CODE STARTS HERE
-  // CONFIGURATION HAS BEEN MOVED TO BACKEND .ENV
-  // 👉 UPDATED CODE ENDS HERE
 
   const inviteLink = `${window.location.origin}/signup`
 
@@ -40,13 +31,11 @@ export default function InviteModal({ isOpen, onClose }) {
     }
 
     try {
-      // 👉 UPDATED CODE STARTS HERE
       // Send the request to our Node.js backend instead of directly to EmailJS
       await apiFetch('/api/invite', {
         method: 'POST',
         body: JSON.stringify(templateParams)
       })
-      // 👉 UPDATED CODE ENDS HERE
       
       setStatus('success')
       setEmail('')
@@ -62,7 +51,7 @@ export default function InviteModal({ isOpen, onClose }) {
 
   const copyLink = () => {
     navigator.clipboard.writeText(inviteLink)
-    alert('Invite link copied to clipboard!')
+    showToast('Invite link copied', 'success')
   }
 
   return (

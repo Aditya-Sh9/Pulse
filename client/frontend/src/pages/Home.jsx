@@ -3,14 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { Activity, Zap, Layers, ArrowRight, BarChart3, MessageSquare, CheckCircle2 } from 'lucide-react'
 
-export default function Home({ onAuth }) {
+export default function Home() {
   const navigate = useNavigate()
 
-  const handleDemoClick = () => {
-    // Mock authentication for demo
-    if (onAuth) onAuth({ name: 'Demo User', email: 'demo@pulse.app' })
-    navigate('/dashboard/list/1')
-  }
+  const handleDemoClick = () => navigate('/login')
 
   return (
     <div className="min-h-screen w-full bg-white selection:bg-purple-100 selection:text-purple-700 font-sans text-slate-900 overflow-x-hidden">
@@ -71,18 +67,18 @@ export default function Home({ onAuth }) {
                 onClick={handleDemoClick}
                 className="px-8 py-4 bg-white text-slate-700 font-bold text-lg rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
               >
-                View Live Demo
+                Sign In
               </button>
             </div>
           </div>
 
-          {/* Product Mockup Container */}
+          {/* Product Preview Container */}
           <div className="relative mx-auto max-w-6xl mt-16 group perspective-1000">
             {/* Window Frame */}
             <div className="rounded-xl bg-slate-900 p-2 shadow-2xl ring-1 ring-slate-900/10 transform transition-transform duration-700 hover:rotate-x-1 hover:shadow-purple-500/20">
               <div className="rounded-lg bg-[#15171B] overflow-hidden flex flex-col aspect-[16/9] md:aspect-[21/9]">
                 
-                {/* Mock Topbar */}
+                {/* Preview Topbar */}
                 <div className="h-10 border-b border-white/5 flex items-center px-4 justify-between bg-[#1E2025]">
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1.5">
@@ -97,7 +93,7 @@ export default function Home({ onAuth }) {
                 </div>
 
                 <div className="flex-1 flex overflow-hidden">
-                  {/* Mock Sidebar */}
+                  {/* Preview Sidebar */}
                   <div className="w-48 bg-[#15171B] border-r border-white/5 p-3 hidden md:flex flex-col gap-4">
                     <div className="space-y-2">
                        <div className="h-6 w-3/4 bg-white/5 rounded animate-pulse"></div>
@@ -106,7 +102,7 @@ export default function Home({ onAuth }) {
                     </div>
                   </div>
 
-                  {/* Mock Main Content */}
+                  {/* Preview Main Content */}
                   <div className="flex-1 bg-[#0F1115] p-6 flex flex-col relative">
                     {/* Floating Pulse Graph */}
                     <div className="absolute right-6 top-6 w-32 h-16 bg-white/5 rounded border border-white/10 flex items-end justify-between px-2 pb-2 backdrop-blur-sm">
@@ -135,7 +131,7 @@ export default function Home({ onAuth }) {
                       </div>
                     </div>
 
-                    {/* Mock List Items */}
+                    {/* Preview List Items */}
                     <div className="space-y-1">
                       <div className="flex items-center gap-4 py-3 border-b border-white/5 text-sm hover:bg-white/5 px-2 -mx-2 transition-colors cursor-default">
                         <div className="w-4 h-4 rounded-full border-2 border-purple-500"></div>
@@ -161,13 +157,20 @@ export default function Home({ onAuth }) {
       {/* ================= SOCIAL PROOF ================= */}
       <div className="border-y border-slate-100 bg-slate-50/50 py-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-10">Trusted by fast-moving teams</p>
-          <div className="flex flex-wrap justify-center gap-12 md:gap-24 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
-            <span className="text-2xl font-black font-serif text-slate-800">NETFLIX</span>
-            <span className="text-2xl font-extrabold font-sans text-slate-800 italic">Stripe</span>
-            <span className="text-2xl font-bold font-mono text-slate-800">Vercel</span>
-            <span className="text-2xl font-extrabold font-sans text-slate-800 tracking-tighter">FIGMA</span>
-            <span className="text-2xl font-black font-serif text-slate-800">Linear</span>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-10">Built for focused collaboration</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
+            <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
+              <p className="text-2xl font-black text-slate-900">Real-time</p>
+              <p className="text-sm text-slate-500 mt-1">Task updates, comments, and team presence.</p>
+            </div>
+            <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
+              <p className="text-2xl font-black text-slate-900">Multi-view</p>
+              <p className="text-sm text-slate-500 mt-1">Board, list, table, and calendar workflows.</p>
+            </div>
+            <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
+              <p className="text-2xl font-black text-slate-900">Role-aware</p>
+              <p className="text-sm text-slate-500 mt-1">Admin controls with member-focused views.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -277,7 +280,7 @@ export default function Home({ onAuth }) {
       {/* ================= CTA SECTION ================= */}
       <div className="py-32 bg-[#0F172A] relative overflow-hidden">
          {/* Noise Texture */}
-         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-20 mix-blend-overlay"></div>
          
          {/* Background Pulse Glow */}
          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-600 rounded-full mix-blend-screen filter blur-[150px] opacity-20 animate-pulse"></div>
@@ -288,7 +291,7 @@ export default function Home({ onAuth }) {
             </h2>
             <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto">
               Join the workspace that adapts to you, not the other way around. 
-              Start your 14-day free trial today.
+              Create your workspace and start organizing work today.
             </p>
             <button 
               onClick={() => navigate('/signup')}
@@ -347,9 +350,9 @@ export default function Home({ onAuth }) {
           </div>
           
           <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-sm text-slate-400 font-medium">© 2026 Pulse Inc. All rights reserved.</div>
+            <div className="text-sm text-slate-400 font-medium">© 2026 Pulse. All rights reserved.</div>
             <div className="flex gap-6">
-              {/* Social placeholders */}
+              {/* Social links */}
               <div className="w-10 h-10 bg-slate-50 border border-slate-200 rounded-full hover:bg-slate-100 hover:border-purple-300 hover:text-purple-600 flex items-center justify-center transition-all cursor-pointer text-slate-400">
                  <span className="sr-only">Twitter</span>
                  <svg fill="currentColor" viewBox="0 0 24 24" className="w-4 h-4"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg>
