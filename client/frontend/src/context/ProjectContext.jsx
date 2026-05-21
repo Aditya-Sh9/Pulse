@@ -58,7 +58,7 @@ export const ProjectProvider = ({ children }) => {
 
   useEffect(() => {
     if (!currentUser) return;
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
     setSocket(newSocket);
 
     newSocket.emit('register', currentUser.uid);
@@ -80,7 +80,7 @@ export const ProjectProvider = ({ children }) => {
       const token = await getAuthToken();
       if (!token && options.requiresAuth !== false) throw new Error("No auth token");
 
-      const baseUrl = 'http://localhost:5000';
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${baseUrl}${endpoint}`, {
         ...options,
         headers: {

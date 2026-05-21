@@ -23,8 +23,9 @@ const server = http.createServer(app);
 // Initialize Socket.io
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Update this if your frontend port is different
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    origin: process.env.FRONTEND_URL || "http://localhost:5173", // Configured via env variable
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
   }
 });
 

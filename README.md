@@ -110,6 +110,61 @@ Once both servers are running:
 *   Frontend runs at `http://localhost:5173` (or whichever port Vite allocates).
 *   Backend API runs at `http://localhost:5000`.
 
+---
+
+## 🐳 Docker Setup
+
+You can run the entire application stack using Docker Compose.
+
+1. Ensure Docker and Docker Compose are installed on your machine.
+2. At the root of the project, create `.env` files for both frontend and backend as described in the setup steps.
+3. Run the following command:
+   ```bash
+   docker-compose up --build
+   ```
+4. Access the application:
+   * Frontend: `http://localhost:8080`
+   * Backend: `http://localhost:5000`
+
+---
+
+## ☁️ Deployment Guide
+
+### Deployment Architecture
+- **Frontend (Vercel):** The React application is built via Vite. Vercel acts as a CDN and serves the static files. It communicates with the backend via REST and Socket.io.
+- **Backend (Render):** The Node.js/Express backend runs as a Web Service on Render, handling API requests, Socket.io real-time connections, and interacting with MongoDB.
+- **Database:** MongoDB Atlas (Cloud).
+
+### 1. Deploying Backend to Render
+1. Create an account on [Render](https://render.com/).
+2. Click "New" -> "Web Service".
+3. Connect your GitHub repository and select the `Pulse` repository.
+4. **Configuration:**
+   - **Root Directory:** `backend`
+   - **Environment:** `Node`
+   - **Build Command:** `npm install`
+   - **Start Command:** `npm start`
+5. **Environment Variables:**
+   Add all variables from your backend `.env` file (`MONGO_URI`, `EMAIL_USER`, etc.). 
+   *Also add:* `FRONTEND_URL` (set this to your Vercel frontend URL once deployed, to allow CORS).
+6. Click **Create Web Service**. Wait for the deployment to finish and copy the Render URL (e.g., `https://pulse-backend-xyz.onrender.com`).
+
+*(Note regarding `serviceAccountKey.json`: For Render deployment, you cannot upload files directly. You should ideally convert the JSON to a base64 string in an environment variable `FIREBASE_SERVICE_ACCOUNT` and parse it in `firebase-config.js`. Alternatively, securely commit it to a private repo.)*
+
+### 2. Deploying Frontend to Vercel
+1. Create an account on [Vercel](https://vercel.com/).
+2. Click "Add New..." -> "Project".
+3. Import your `Pulse` GitHub repository.
+4. **Configuration:**
+   - **Framework Preset:** Vite
+   - **Root Directory:** `client/frontend`
+5. **Environment Variables:**
+   Add all your `VITE_FIREBASE_*` variables.
+   *Crucially add:* `VITE_API_URL` and set it to your Render backend URL (e.g., `https://pulse-backend-xyz.onrender.com`).
+6. Click **Deploy**. Vercel will build and serve your frontend.
+
+---
+
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
