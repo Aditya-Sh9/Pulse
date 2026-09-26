@@ -63,18 +63,17 @@ export default function InviteModal({ isOpen, onClose }) {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-[#1E1F21] border border-[#3E4045] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md bg-card border border-edge rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Top Glow/Pulse Line */}
-        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-50"></div>
 
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#2B2D31] flex justify-between items-center bg-[#18191B]">
+        <div className="px-6 py-4 border-b border-raised flex justify-between items-center bg-panel">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+            <div className="w-2 h-2 rounded-full bg-accent-500"></div>
             Invite Member
           </h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-md">
+          <button onClick={onClose} className="text-neutral-500 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-md">
             <X size={20} />
           </button>
         </div>
@@ -84,30 +83,30 @@ export default function InviteModal({ isOpen, onClose }) {
           
           {status === 'success' ? (
             <div className="text-center py-4 animate-in fade-in zoom-in-95">
-              <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+              <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
                 <CheckCircle2 size={32} />
               </div>
               <h4 className="text-xl font-bold text-white mb-2">Invitation Sent!</h4>
-              <p className="text-slate-400 text-sm leading-relaxed">
+              <p className="text-neutral-400 text-sm leading-relaxed">
                 An interactive invite has been dispatched to <br/>
-                <span className="text-purple-400 font-medium">{email}</span>
+                <span className="text-accent-400 font-medium">{email}</span>
               </p>
             </div>
           ) : (
             <form onSubmit={handleSendInvite} className="space-y-5">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] mb-2 block">
+                <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.1em] mb-2 block">
                   Colleague's Email
                 </label>
                 <div className="relative group">
-                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
+                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-accent-400 transition-colors" />
                   <input
                     type="email"
                     required
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#111] border border-[#3E4045] text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all placeholder-slate-600"
+                    className="w-full bg-base border border-edge text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-all placeholder-neutral-600"
                   />
                 </div>
               </div>
@@ -122,7 +121,7 @@ export default function InviteModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={status === 'sending'}
-                className="w-full py-3 rounded-xl bg-white text-black font-bold text-sm hover:bg-slate-200 shadow-xl shadow-white/5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="w-full py-3 rounded-xl bg-white text-black font-bold text-sm hover:bg-neutral-200 shadow-white/5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 {status === 'sending' ? (
                   <>Sending Pulse...</>
@@ -135,19 +134,19 @@ export default function InviteModal({ isOpen, onClose }) {
 
           {/* Divider */}
           <div className="relative flex items-center py-2">
-            <div className="flex-grow border-t border-[#2B2D31]"></div>
-            <span className="flex-shrink-0 mx-4 text-[10px] text-slate-600 uppercase font-bold tracking-widest">Workspace Link</span>
-            <div className="flex-grow border-t border-[#2B2D31]"></div>
+            <div className="flex-grow border-t border-raised"></div>
+            <span className="flex-shrink-0 mx-4 text-[10px] text-neutral-600 uppercase font-bold tracking-widest">Workspace Link</span>
+            <div className="flex-grow border-t border-raised"></div>
           </div>
 
           {/* Copy Link Section */}
-          <div className="flex items-center gap-2 bg-[#111] p-1.5 rounded-xl border border-[#2B2D31]">
-            <code className="flex-1 text-[11px] text-slate-500 truncate px-3 font-mono">
+          <div className="flex items-center gap-2 bg-base p-1.5 rounded-xl border border-raised">
+            <code className="flex-1 text-[11px] text-neutral-500 truncate px-3 font-mono">
               {inviteLink}
             </code>
             <button 
               onClick={copyLink}
-              className="p-2.5 bg-[#1E1F21] hover:bg-[#2B2D31] rounded-lg text-slate-400 hover:text-white transition-colors border border-[#3E4045]"
+              className="p-2.5 bg-card hover:bg-raised rounded-lg text-neutral-400 hover:text-white transition-colors border border-edge"
               title="Copy to clipboard"
             >
               <Copy size={14} />

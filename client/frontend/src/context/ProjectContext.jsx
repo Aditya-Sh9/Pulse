@@ -293,7 +293,7 @@ export const ProjectProvider = ({ children }) => {
           await logGlobalActivity(`Moved task "${taskName}" to ${updates.status}`, 'task')
 
           if (updates.status === 'COMPLETE') {
-            confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ['#A855F7', '#3B82F6', '#10B981'], zIndex: 9999 })
+            confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ['#45C1AA', '#F57D43', '#10B981'], zIndex: 9999 })
             if (currentUser) {
               updateDoc(doc(db, 'users', currentUser.uid), { productivityScore: increment(10) }).catch(e => console.error(e))
             }
@@ -764,9 +764,9 @@ export const ProjectProvider = ({ children }) => {
   }
 
   const getToastStyles = (type) => {
-    if (type === 'error') return { bg: 'bg-[#1E1F21] border-red-500/30 text-red-400', icon: <AlertCircle size={18} /> }
-    if (type === 'info') return { bg: 'bg-[#1E1F21] border-blue-500/30 text-blue-400', icon: <Info size={18} /> }
-    return { bg: 'bg-[#1E1F21] border-green-500/30 text-green-400', icon: <CheckCircle2 size={18} /> }
+    if (type === 'error') return { bg: 'bg-card border-red-500/30 text-red-400', icon: <AlertCircle size={18} /> }
+    if (type === 'info') return { bg: 'bg-card border-edge text-neutral-200', icon: <Info size={18} /> }
+    return { bg: 'bg-card border-green-500/30 text-green-400', icon: <CheckCircle2 size={18} /> }
   }
 
   return (
@@ -788,17 +788,17 @@ export const ProjectProvider = ({ children }) => {
       {confirmConfig && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmConfig(null)} />
-          <div className="relative z-10 w-full max-w-md bg-[#1E1F21] border border-[#2B2D31] rounded-xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative z-10 w-full max-w-md bg-card border border-raised rounded-xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 mb-4">
-              {confirmConfig.type === 'danger' ? <AlertTriangle className="text-red-500" size={24} /> : <Info className="text-purple-500" size={24} />}
+              {confirmConfig.type === 'danger' ? <AlertTriangle className="text-red-500" size={24} /> : <Info className="text-accent-500" size={24} />}
               <h3 className="text-lg font-bold text-white">{confirmConfig.title}</h3>
             </div>
-            <p className="text-gray-300 text-sm leading-relaxed mb-6">{confirmConfig.message}</p>
+            <p className="text-neutral-300 text-sm leading-relaxed mb-6">{confirmConfig.message}</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmConfig(null)} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#2B2D31] transition-colors">Cancel</button>
+              <button onClick={() => setConfirmConfig(null)} className="px-4 py-2 rounded-lg text-sm font-medium text-neutral-400 hover:bg-raised transition-colors">Cancel</button>
               <button
                 onClick={() => { confirmConfig.onConfirm(); setConfirmConfig(null); }}
-                className={`px-6 py-2 rounded-lg text-sm font-bold text-white transition-colors shadow-lg ${confirmConfig.type === 'danger' ? 'bg-red-600 hover:bg-red-500 shadow-red-600/20' : 'bg-purple-600 hover:bg-purple-500 shadow-purple-600/20'}`}
+                className={`px-6 py-2 rounded-lg text-sm font-bold text-white transition-colors ${confirmConfig.type === 'danger' ? 'bg-red-600 hover:bg-red-500 shadow-red-600/20' : 'bg-accent-600 hover:bg-accent-500'}`}
               >
                 Confirm
               </button>

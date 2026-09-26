@@ -1,76 +1,177 @@
 @import "tailwindcss";
 
+/* Landing page tokens (flat: ink on warm paper, one teal accent, orange reserved for the live pulse) */
+@theme {
+  --font-display: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-paper: #F5F4EF;
+  --color-paper-2: #ECEAE3;
+  --color-ink: #111412;
+  --color-ink-2: #3F4541;
+  --color-ink-3: #5F6561;
+  --color-rule: #D9D6CC;
+  --color-signal: #0F766E;
+  --color-signal-strong: #115E59;
+  --color-signal-tint: #DCEDE9;
+  --color-pulse: #C2410C;
+  --color-app: #111311;
+  --color-app-2: #1A1D1A;
+
+  /* ---- App (dark) surfaces: warm neutral, faint green undertone ---- */
+  --color-base: #0C0D0C;
+  --color-panel: #111311;
+  --color-card: #161816;
+  --color-raised: #212421;
+  --color-edge: #2D312D;
+  --color-edge-2: #3C413C;
+
+  /* Neutral greys retuned to sit with the surfaces (500 keeps 4.5:1 on card) */
+  --color-neutral-50: #F7F7F5;
+  --color-neutral-100: #EDEEEB;
+  --color-neutral-200: #DCDEDA;
+  --color-neutral-300: #C2C5C0;
+  --color-neutral-400: #A3A7A1;
+  --color-neutral-500: #858A83;
+  --color-neutral-600: #62675F;
+  --color-neutral-700: #454944;
+  --color-neutral-800: #2E312D;
+  --color-neutral-900: #1F221F;
+  --color-neutral-950: #141614;
+
+  /* Primary accent: jade */
+  --color-accent-50: #ECFBF7;
+  --color-accent-100: #D1F5EC;
+  --color-accent-200: #A5EADA;
+  --color-accent-300: #72D8C3;
+  --color-accent-400: #45C1AA;
+  --color-accent-500: #27A690;
+  --color-accent-600: #1C8575;
+  --color-accent-700: #1A6B60;
+  --color-accent-800: #19564E;
+  --color-accent-900: #174741;
+  --color-accent-950: #0A2925;
+
+  /* Secondary: ember (in-progress, info, highlights) */
+  --color-ember-50: #FFF4ED;
+  --color-ember-100: #FFE5D3;
+  --color-ember-200: #FEC6A5;
+  --color-ember-300: #FC9F6D;
+  --color-ember-400: #F57D43;
+  --color-ember-500: #E8622A;
+  --color-ember-600: #C94D1C;
+  --color-ember-700: #A63C19;
+  --color-ember-800: #85331B;
+  --color-ember-900: #6C2D19;
+  --color-ember-950: #3A140A;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Global reset and app defaults */
+/* ---------- Global defaults ---------- */
 :root {
-  --body-bg: #f8fafc;
-  --text: #0f172a;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0F1117; 
-}
-
-::-webkit-scrollbar-thumb {
-  background: #2B2D31; 
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #3E4045; 
-}
-
-::-webkit-scrollbar-corner {
-  background: #0F1117;
+  font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html, body, #root {
   height: 100%;
   margin: 0;
-  background-color: #0F1117;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  background-color: #0F1117;
+  background-color: var(--color-base);
 }
 
 body {
-  margin: 0;
   min-height: 100vh;
-  background: var(--body-bg);
-  color: var(--text);
+  color: var(--color-neutral-200);
+  text-rendering: optimizeLegibility;
 }
 
-/* Small utility defaults for non-tailwind elements */
-a { color: #6366f1 }
+/* The landing page is the one light surface; everything else is dark */
+html:has(.landing), html:has(.landing) body, html:has(.landing) #root { background-color: var(--color-paper); }
+html:not(:has(.landing)) { color-scheme: dark; }
 
-/* Add to index.css */
-@keyframes blob {
-  0% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-  100% { transform: translate(0px, 0px) scale(1); }
+::selection { background: color-mix(in oklab, var(--color-accent-500) 35%, transparent); color: var(--color-neutral-50); }
+
+/* Numbers that change (counts, XP, dates) shouldn't jitter */
+.tabular-nums, time { font-variant-numeric: tabular-nums; }
+
+/* ---------- Scrollbars ---------- */
+* { scrollbar-width: thin; scrollbar-color: var(--color-edge) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-raised);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--color-edge-2); }
+.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+
+@layer base {
+  a { color: var(--color-accent-400); }
+
+  /* One consistent, visible keyboard focus ring across the app */
+  :where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid var(--color-accent-400);
+    outline-offset: 2px;
+  }
+  html:has(.landing) :where(button, a, [tabindex]):focus-visible { outline-color: var(--color-signal); }
+
+  button:not(:disabled), [role="button"] { cursor: pointer; }
 }
 
-.animate-blob {
-  animation: blob 7s infinite;
+/* ---------- Enter motion for the app's popovers, menus and modals ----------
+   The markup already uses `animate-in fade-in zoom-in-95 slide-in-from-top-2`
+   (tailwindcss-animate names); these give those classes real behaviour. */
+@keyframes pulse-enter {
+  from {
+    opacity: var(--enter-opacity, 1);
+    transform: translate3d(var(--enter-x, 0), var(--enter-y, 0), 0) scale(var(--enter-scale, 1));
+  }
+}
+.animate-in {
+  animation: pulse-enter 220ms var(--ease-out-quint) both;
+  animation-duration: var(--enter-duration, 220ms);
+}
+.fade-in { --enter-opacity: 0; }
+.zoom-in-95 { --enter-scale: 0.96; }
+.zoom-in-90 { --enter-scale: 0.92; }
+.slide-in-from-top-1 { --enter-y: -4px; }
+.slide-in-from-top-2 { --enter-y: -8px; }
+.slide-in-from-top-4 { --enter-y: -16px; }
+.slide-in-from-bottom-2 { --enter-y: 8px; }
+.slide-in-from-bottom-4 { --enter-y: 16px; }
+.slide-in-from-bottom-5 { --enter-y: 20px; }
+.slide-in-from-bottom-8 { --enter-y: 24px; }
+.slide-in-from-right-4 { --enter-x: 16px; }
+.slide-in-from-right-full { --enter-x: 100%; }
+.animate-in.duration-200 { --enter-duration: 200ms; }
+.animate-in.duration-300 { --enter-duration: 300ms; }
+.animate-in.duration-500 { --enter-duration: 420ms; }
+.animate-in.duration-700 { --enter-duration: 520ms; }
+
+/* Subtle surface lift used by interactive cards */
+.lift { transition: transform 220ms var(--ease-out-quint), border-color 180ms ease, background-color 180ms ease; }
+@media (hover: hover) { .lift:hover { transform: translateY(-2px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in { animation: none; }
+  .lift, .lift:hover { transform: none; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
-.animation-delay-2000 {
-  animation-delay: 2s;
+/* Anchor jumps on the landing page glide unless the user asked for less motion */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.landing) { scroll-behavior: smooth; }
 }
+/* Sections carry their own top padding; pull anchors up so headings land just under the nav */
+.landing section[id] { scroll-margin-top: -2rem; }
 
-.animation-delay-4000 {
-  animation-delay: 4s;
-}
+/* Heartbeat loader: a short segment travels along the trace */
+.pulse-loader-trace { stroke-dasharray: 22 100; animation: pulse-trace 1.4s linear infinite; }
+@keyframes pulse-trace { from { stroke-dashoffset: 22; } to { stroke-dashoffset: -100; } }
+@media (prefers-reduced-motion: reduce) { .pulse-loader-trace { animation: none; stroke-dasharray: none; } }

@@ -11,30 +11,30 @@ import CreateTaskForm from '../components/CreateTaskForm'
 
 // --- CONSTANTS ---
 const COLUMNS = [
-  { id: 'TO DO', label: 'To Do', color: 'bg-slate-500' },
-  { id: 'IN PROGRESS', label: 'In Progress', color: 'bg-blue-500' },
+  { id: 'TO DO', label: 'To Do', color: 'bg-neutral-500' },
+  { id: 'IN PROGRESS', label: 'In Progress', color: 'bg-ember-500' },
   { id: 'COMPLETE', label: 'Complete', color: 'bg-green-500' }
 ]
 
 const PRIORITIES = {
   High: { color: 'text-red-400 bg-red-400/10 border-red-400/20' },
-  Normal: { color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
-  Low: { color: 'text-slate-400 bg-slate-400/10 border-slate-400/20' }
+  Normal: { color: 'text-neutral-300 bg-neutral-500/10 border-neutral-500/25' },
+  Low: { color: 'text-neutral-400 bg-neutral-400/10 border-neutral-400/20' }
 }
 
 // Navigation Link Component
 const TabLink = ({ to, icon: Icon, label }) => (
   <NavLink
     to={to}
-    className={({ isActive }) => `flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-purple-500 text-white' : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#2B2D31] rounded-t-md'}`}>
+    className={({ isActive }) => `flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-accent-500 text-white' : 'border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-raised rounded-t-md'}`}>
     <Icon size={14} /> {label}
   </NavLink>
 )
 
 // Shared Helper Components
 const MenuItem = ({ icon: Icon, label, onClick, danger }) => (
-  <button onClick={(e) => { e.stopPropagation(); onClick && onClick() }} className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-[#3E4045] transition-colors ${danger ? 'text-red-400 hover:text-red-300' : 'text-gray-300'}`}>
-    <Icon size={14} className={danger ? "text-red-400" : "text-gray-500"} /> {label}
+  <button onClick={(e) => { e.stopPropagation(); onClick && onClick() }} className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-edge transition-colors ${danger ? 'text-red-400 hover:text-red-300' : 'text-neutral-300'}`}>
+    <Icon size={14} className={danger ? "text-red-400" : "text-neutral-500"} /> {label}
   </button>
 )
 
@@ -125,15 +125,15 @@ export default function BoardView() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0F1117] text-gray-200">
+    <div className="flex flex-col h-full bg-base text-neutral-200">
 
       {/* --- Header & Tabs --- */}
-      <div className="bg-[#1E1F21] border-b border-[#2B2D31] flex-shrink-0">
+      <div className="bg-card border-b border-raised flex-shrink-0">
         <div className="px-6 pt-4 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-gray-400 relative">
-            <span className="bg-[#323438] w-5 h-5 flex items-center justify-center rounded text-[10px]">TS</span>
+          <div className="flex items-center gap-2 text-sm text-neutral-400 relative">
+            <span className="bg-edge w-5 h-5 flex items-center justify-center rounded text-[10px]">TS</span>
             <span>Team Space</span>
-            <span className="text-gray-600">/</span>
+            <span className="text-neutral-600">/</span>
             <LayoutGrid size={14} />
             <div
               className="flex items-center gap-1 cursor-pointer hover:text-white"
@@ -144,11 +144,11 @@ export default function BoardView() {
             </div>
 
             {showProjectDropdown && (
-              <div className="absolute top-full left-32 mt-1 w-48 bg-[#2B2D31] border border-[#3E4045] rounded-md shadow-xl z-50 py-1">
+              <div className="absolute top-full left-32 mt-1 w-48 bg-raised border border-edge rounded-md shadow-xl z-50 py-1">
                 {projects.map(p => (
                   <div
                     key={p.id}
-                    className="px-3 py-2 hover:bg-[#3E4045] text-sm text-gray-300 cursor-pointer flex items-center gap-2"
+                    className="px-3 py-2 hover:bg-edge text-sm text-neutral-300 cursor-pointer flex items-center gap-2"
                     onClick={() => {
                       navigate(`/dashboard/board/${p.id}`);
                       setShowProjectDropdown(false);
@@ -163,11 +163,11 @@ export default function BoardView() {
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
               {members.slice(0, 3).map(m => (
-                <div key={m.id} className="w-6 h-6 rounded-full bg-indigo-600 border border-[#1E1F21] flex items-center justify-center text-[9px] text-white">
+                <div key={m.id} className="w-6 h-6 rounded-full bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 border border-card flex items-center justify-center text-[9px] text-accent-200">
                   {m.avatar}
                 </div>
               ))}
-              <button className="w-6 h-6 rounded-full bg-[#2B2D31] border border-[#1E1F21] flex items-center justify-center text-[10px] text-gray-400 hover:text-white hover:bg-[#3E4045]">
+              <button className="w-6 h-6 rounded-full bg-raised border border-card flex items-center justify-center text-[10px] text-neutral-400 hover:text-white hover:bg-edge">
                 +
               </button>
             </div>
@@ -180,11 +180,11 @@ export default function BoardView() {
           <TabLink to={`/dashboard/table/${projectId}`} icon={Table} label="Table" />
           <button
             onClick={() => setShowArchived(!showArchived)}
-            className={`flex items-center gap-1 px-3 py-1 ml-auto text-xs font-medium rounded-md transition-colors ${showArchived ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-white hover:bg-[#2B2D31]'}`}
+            className={`flex items-center gap-1 px-3 py-1 ml-auto text-xs font-medium rounded-md transition-colors ${showArchived ? 'bg-accent-500/20 text-accent-400' : 'text-neutral-400 hover:text-white hover:bg-raised'}`}
           >
             <Archive size={12} /> {showArchived ? 'Hide Archived' : 'Show Archived'}
           </button>
-          <button className="flex items-center gap-1 px-2 text-xs font-medium text-gray-400 hover:text-white">
+          <button className="flex items-center gap-1 px-2 text-xs font-medium text-neutral-400 hover:text-white">
             <Plus size={12} /> View
           </button>
         </div>
@@ -208,34 +208,34 @@ export default function BoardView() {
                 <div className="flex items-center justify-between mb-4 px-2">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${column.color}`}></span>
-                    <span className="text-sm font-bold text-gray-300 uppercase tracking-wide">{column.label}</span>
-                    <span className="text-xs text-gray-500 bg-[#1E1F21] px-2 py-0.5 rounded-full">{columnTasks.length}</span>
+                    <span className="text-sm font-bold text-neutral-300 uppercase tracking-wide">{column.label}</span>
+                    <span className="text-xs text-neutral-500 bg-card px-2 py-0.5 rounded-full">{columnTasks.length}</span>
                   </div>
                   <div className="flex items-center gap-1 relative">
                     <button
                       onClick={() => { setDefaultStatus(column.id); setShowCreateModal(true); }}
-                      className="p-1 hover:bg-[#2B2D31] rounded text-gray-500 hover:text-white transition-colors"
+                      className="p-1 hover:bg-raised rounded text-neutral-500 hover:text-white transition-colors"
                     >
                       <Plus size={14} />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setActiveColMenuId(activeColMenuId === column.id ? null : column.id); setActiveMenuId(null); }}
-                      className="p-1 hover:bg-[#2B2D31] rounded text-gray-500 hover:text-white transition-colors"
+                      className="p-1 hover:bg-raised rounded text-neutral-500 hover:text-white transition-colors"
                     >
                       <MoreHorizontal size={14} />
                     </button>
 
                     {activeColMenuId === column.id && (
-                      <div ref={menuRef} className="absolute right-0 top-8 w-48 bg-[#2B2D31] border border-[#3E4045] rounded-lg shadow-2xl z-50 p-1 flex flex-col">
+                      <div ref={menuRef} className="absolute right-0 top-8 w-48 bg-raised border border-edge rounded-lg shadow-2xl z-50 p-1 flex flex-col">
                         <MenuItem icon={Plus} label="Add Task" onClick={() => { setDefaultStatus(column.id); setShowCreateModal(true); setActiveColMenuId(null); }} />
-                        <div className="px-2 py-1.5 text-[11px] text-gray-500">No bulk actions available.</div>
+                        <div className="px-2 py-1.5 text-[11px] text-neutral-500">No bulk actions available.</div>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Drop Zone */}
-                <div className="flex-1 bg-[#161719]/50 rounded-xl border border-[#2B2D31]/50 p-3 overflow-y-auto space-y-3">
+                <div className="flex-1 bg-panel rounded-xl border border-raised/50 p-3 overflow-y-auto space-y-3">
                   {columnTasks.map(task => {
                     const assignee = getMemberById(task.assigneeId)
 
@@ -246,47 +246,47 @@ export default function BoardView() {
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         onDragEnd={handleDragEnd}
                         onClick={() => openTaskDrawer(task)}
-                        className="group bg-[#1E1F21] p-4 rounded-lg border border-[#2B2D31] shadow-sm hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-900/10 cursor-grab active:cursor-grabbing transition-all duration-200"
+                        className="group bg-card p-4 rounded-lg border border-raised shadow-sm hover:border-accent-500/30 cursor-grab active:cursor-grabbing transition-all duration-200"
                       >
                         {/* Tags Row */}
                         <div className="flex justify-between items-start mb-2 relative">
-                          <div className={`px-2 py-0.5 rounded text-[10px] font-bold border ${PRIORITIES[task.priority]?.color || 'text-gray-500 border-gray-700'}`}>
+                          <div className={`px-2 py-0.5 rounded text-[10px] font-bold border ${PRIORITIES[task.priority]?.color || 'text-neutral-500 border-neutral-700'}`}>
                             {task.priority}
                           </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === task.id ? null : task.id); setActiveColMenuId(null); }}
-                            className={`p-0.5 rounded transition-colors ${activeMenuId === task.id ? 'opacity-100 text-white bg-[#3E4045]' : 'opacity-0 group-hover:opacity-100 text-gray-600 hover:text-white'}`}
+                            className={`p-0.5 rounded transition-colors ${activeMenuId === task.id ? 'opacity-100 text-white bg-edge' : 'opacity-0 group-hover:opacity-100 text-neutral-600 hover:text-white'}`}
                           >
                             <MoreHorizontal size={16} />
                           </button>
 
                           {activeMenuId === task.id && (
-                            <div ref={menuRef} className="absolute right-0 top-6 w-60 bg-[#2B2D31] border border-[#3E4045] rounded-lg shadow-2xl z-50 p-1.5 flex flex-col gap-1 cursor-default" onClick={e => e.stopPropagation()}>
+                            <div ref={menuRef} className="absolute right-0 top-6 w-60 bg-raised border border-edge rounded-lg shadow-2xl z-50 p-1.5 flex flex-col gap-1 cursor-default" onClick={e => e.stopPropagation()}>
                               <div className="grid grid-cols-3 gap-1 mb-1">
-                                <button onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Current view link copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Link size={12} /> Link</button>
-                                <button onClick={() => { navigator.clipboard.writeText(task.id); showToast('Task ID copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><Copy size={12} /> ID</button>
-                                <button onClick={() => { openTaskDrawer(task); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-[#3E4045] hover:bg-[#4E5055] py-1.5 rounded text-[10px] text-gray-300"><ExternalLink size={12} /> Open</button>
+                                <button onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Current view link copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><Link size={12} /> Link</button>
+                                <button onClick={() => { navigator.clipboard.writeText(task.id); showToast('Task ID copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><Copy size={12} /> ID</button>
+                                <button onClick={() => { openTaskDrawer(task); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><ExternalLink size={12} /> Open</button>
                               </div>
-                              <div className="h-px bg-[#3E4045] my-0.5" />
+                              <div className="h-px bg-edge my-0.5" />
                               <MenuItem icon={Pencil} label="Rename" onClick={() => { setActiveMenuId(null); openTaskDrawer(task); }} />
                               <MenuItem icon={DuplicateIcon} label="Duplicate" onClick={() => duplicateTask(task)} />
                               <MenuItem icon={Bell} label="Remind me" onClick={() => { setActiveMenuId(null); showToast('Reminders are not configured for this MVP yet.', 'info'); }} />
                               <MenuItem icon={Archive} label={task.isArchived ? "Unarchive" : "Archive"} onClick={() => handleUpdateTask(task.id, 'isArchived', !task.isArchived)} />
-                              <div className="h-px bg-[#3E4045] my-0.5" />
+                              <div className="h-px bg-edge my-0.5" />
                               <MenuItem icon={Trash2} label="Delete" danger={true} onClick={() => handleDeleteTask(task.id)} />
                             </div>
                           )}
                         </div>
 
                         {/* Title */}
-                        <h4 className="text-sm font-medium text-gray-200 mb-3 leading-snug">
+                        <h4 className="text-sm font-medium text-neutral-200 mb-3 leading-snug">
                           {task.title}
                         </h4>
 
                         {/* Footer Row */}
                         <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                          <div className="flex items-center gap-3 text-gray-500 text-xs">
-                            <div className={`flex items-center gap-1 ${task.dueDate ? 'text-gray-400' : ''}`}>
+                          <div className="flex items-center gap-3 text-neutral-500 text-xs">
+                            <div className={`flex items-center gap-1 ${task.dueDate ? 'text-neutral-400' : ''}`}>
                               <Clock size={12} />
                               {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-'}
                             </div>
@@ -296,7 +296,7 @@ export default function BoardView() {
                           <div>
                             {assignee ? (
                               <div
-                                className={`w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm flex-shrink-0 ${userRole === 'admin' ? 'cursor-pointer hover:ring-2 hover:ring-blue-400/50' : ''}`}
+                                className={`w-6 h-6 rounded-full bg-raised ring-1 ring-inset ring-edge flex items-center justify-center text-[10px] font-semibold text-neutral-200 flex-shrink-0 ${userRole === 'admin' ? 'cursor-pointer hover:ring-2 hover:ring-ember-400/50' : ''}`}
                                 title={assignee?.name || 'Unassigned'}
                                 onClick={(e) => {
                                   if (userRole === 'admin') {
@@ -308,7 +308,7 @@ export default function BoardView() {
                                 {assignee?.name?.[0]?.toUpperCase() || 'U'}
                               </div>
                             ) : (
-                              <div className="w-6 h-6 rounded-full border border-dashed border-gray-600 flex items-center justify-center text-gray-600">
+                              <div className="w-6 h-6 rounded-full border border-dashed border-neutral-600 flex items-center justify-center text-neutral-600">
                                 <UserCircle size={14} />
                               </div>
                             )}
@@ -320,7 +320,7 @@ export default function BoardView() {
 
                   {/* Empty State / Drop Target Hint */}
                   {columnTasks.length === 0 && (
-                    <div className="h-24 rounded-lg border-2 border-dashed border-[#2B2D31] flex flex-col items-center justify-center text-gray-600 text-xs">
+                    <div className="h-24 rounded-lg border-2 border-dashed border-raised flex flex-col items-center justify-center text-neutral-600 text-xs">
                       <span>Drop tasks here</span>
                     </div>
                   )}

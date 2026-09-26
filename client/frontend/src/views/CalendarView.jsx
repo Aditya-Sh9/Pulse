@@ -11,7 +11,7 @@ import CreateTaskForm from '../components/CreateTaskForm'
 const TabLink = ({ to, icon: Icon, label }) => (
   <NavLink
     to={to}
-    className={({ isActive }) => `flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-purple-500 text-white' : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#2B2D31] rounded-t-md'}`}>
+    className={({ isActive }) => `flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-accent-500 text-white' : 'border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-raised rounded-t-md'}`}>
     <Icon size={14} /> {label}
   </NavLink>
 )
@@ -70,12 +70,12 @@ export default function CalendarView() {
   return (
     <>
       {/* Header & Tabs */}
-      <div className="bg-[#1E1F21] border-b border-[#2B2D31]">
+      <div className="bg-card border-b border-raised">
         <div className="px-6 pt-4 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-gray-400 relative">
-            <span className="bg-[#323438] w-5 h-5 flex items-center justify-center rounded text-[10px]">TS</span>
+          <div className="flex items-center gap-2 text-sm text-neutral-400 relative">
+            <span className="bg-edge w-5 h-5 flex items-center justify-center rounded text-[10px]">TS</span>
             <span>Team Space</span>
-            <span className="text-gray-600">/</span>
+            <span className="text-neutral-600">/</span>
             <LayoutGrid size={14} />
             <div
               className="flex items-center gap-1 cursor-pointer hover:text-white"
@@ -86,11 +86,11 @@ export default function CalendarView() {
             </div>
 
             {showProjectDropdown && (
-              <div className="absolute top-full left-32 mt-1 w-48 bg-[#2B2D31] border border-[#3E4045] rounded-md shadow-xl z-50 py-1">
+              <div className="absolute top-full left-32 mt-1 w-48 bg-raised border border-edge rounded-md shadow-xl z-50 py-1">
                 {projects.map(p => (
                   <div
                     key={p.id}
-                    className="px-3 py-2 hover:bg-[#3E4045] text-sm text-gray-300 cursor-pointer flex items-center gap-2"
+                    className="px-3 py-2 hover:bg-edge text-sm text-neutral-300 cursor-pointer flex items-center gap-2"
                     onClick={() => {
                       navigate(`/dashboard/calendar/${p.id}`);
                       setShowProjectDropdown(false);
@@ -103,7 +103,7 @@ export default function CalendarView() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 hover:text-white cursor-pointer transition-colors">Share</span>
+            <span className="text-xs text-neutral-400 hover:text-white cursor-pointer transition-colors">Share</span>
           </div>
         </div>
         <div className="px-4 flex items-center gap-1 mt-1">
@@ -112,14 +112,14 @@ export default function CalendarView() {
           <TabLink to={`/dashboard/board/${projectId}`} icon={Kanban} label="Board" />
           <TabLink to={`/dashboard/calendar/${projectId}`} icon={Calendar} label="Calendar" />
           <TabLink to={`/dashboard/table/${projectId}`} icon={Table} label="Table" />
-          <button className="flex items-center gap-1 px-2 text-xs font-medium text-gray-400 hover:text-white">
+          <button className="flex items-center gap-1 px-2 text-xs font-medium text-neutral-400 hover:text-white">
             <Plus size={12} /> View
           </button>
         </div>
       </div>
 
       {/* Calendar */}
-      <main className="flex-1 overflow-auto p-8 bg-[#111]">
+      <main className="flex-1 overflow-auto p-8 bg-base">
         <div className="max-w-6xl mx-auto">
           {/* Month Header */}
           <div className="flex items-center justify-between mb-6">
@@ -127,18 +127,18 @@ export default function CalendarView() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handlePrevMonth}
-                className="p-2 hover:bg-[#2B2D31] rounded-md text-gray-400 hover:text-white transition-colors"
+                className="p-2 hover:bg-raised rounded-md text-neutral-400 hover:text-white transition-colors"
               >
                 <ChevronLeft size={20} />
               </button>
               <button
                 onClick={handleNextMonth}
-                className="p-2 hover:bg-[#2B2D31] rounded-md text-gray-400 hover:text-white transition-colors"
+                className="p-2 hover:bg-raised rounded-md text-neutral-400 hover:text-white transition-colors"
               >
                 <ChevronRight size={20} />
               </button>
-              <div className="h-6 w-px bg-[#3E4045] mx-2"></div>
-              <button onClick={() => setShowCreateModal(true)} className="bg-white text-black text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors">
+              <div className="h-6 w-px bg-edge mx-2"></div>
+              <button onClick={() => setShowCreateModal(true)} className="bg-white text-black text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-neutral-200 transition-colors">
                 Add Task
               </button>
             </div>
@@ -147,7 +147,7 @@ export default function CalendarView() {
           {/* Weekday Headers */}
           <div className="grid grid-cols-7 gap-2 mb-2">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="text-center text-xs font-semibold text-gray-500 py-2">
+              <div key={day} className="text-center text-xs font-semibold text-neutral-500 py-2">
                 {day}
               </div>
             ))}
@@ -161,26 +161,26 @@ export default function CalendarView() {
                 <div
                   key={idx}
                   className={`min-h-[120px] p-2 rounded-lg border transition-colors ${day
-                    ? 'bg-[#1E1F21] border-[#2B2D31] hover:border-[#3E4045]'
+                    ? 'bg-card border-raised hover:border-edge'
                     : 'bg-transparent border-transparent'
                     }`}
                 >
                   {day && (
                     <>
-                      <div className="text-sm font-medium text-gray-300 mb-2">{day}</div>
+                      <div className="text-sm font-medium text-neutral-300 mb-2">{day}</div>
                       <div className="space-y-1">
                         {dayTasks.slice(0, 2).map(task => (
                           <div
                             key={task.id}
                             onClick={(e) => { e.stopPropagation(); openTaskDrawer(task); }}
-                            className="text-xs bg-indigo-600 text-white px-2 py-1 rounded truncate cursor-pointer hover:bg-indigo-700 shadow-sm"
+                            className="text-xs font-medium bg-accent-500/15 text-accent-200 ring-1 ring-inset ring-accent-400/25 px-2 py-1 rounded-md truncate cursor-pointer transition-colors hover:bg-accent-500/25"
                             title={task.title}
                           >
                             {task.title}
                           </div>
                         ))}
                         {dayTasks.length > 2 && (
-                          <div className="text-xs text-gray-500 px-2">
+                          <div className="text-xs text-neutral-500 px-2">
                             +{dayTasks.length - 2} more
                           </div>
                         )}

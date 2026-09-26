@@ -1,368 +1,456 @@
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useRef } from 'react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGSAP } from '@gsap/react'
+import { ArrowRight, ArrowUpRight, ShieldCheck } from 'lucide-react'
 import Navbar from '../components/Navbar'
-import { Activity, Zap, Layers, ArrowRight, BarChart3, MessageSquare, CheckCircle2 } from 'lucide-react'
+import HeroBoard from '../components/landing/HeroBoard'
+import ViewsShowcase from '../components/landing/ViewsShowcase'
+import PulseMark from '../components/landing/PulseMark'
+import AppLink from '../components/landing/AppLink'
+import { workspacePages, projectViews, adminPages, sections, REPO_URL } from '../components/landing/siteMap'
+import { useAuth } from '../context/AuthContext'
+
+gsap.registerPlugin(useGSAP, ScrollTrigger)
+
+const ring = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal'
+
+const features = [
+  { n: '01', title: 'Live by default', to: '/dashboard',
+    body: 'Tasks, projects and notifications stream from Firestore listeners, so a card moved on one laptop moves on every open board. No refresh button, no stale columns.' },
+  { n: '02', title: 'Roles that mean something', to: '/dashboard/team',
+    body: 'Admins invite people by email, manage members, change settings and read the activity log. Members get a focused workspace without the controls they don’t need.' },
+  { n: '03', title: 'Conversation next to the work', to: '/dashboard/messages',
+    body: 'Direct messages travel over Socket.io and are stored in MongoDB, with online presence, so the question about a task lives beside the task.' },
+  { n: '04', title: 'An inbox, not a firehose', to: '/dashboard/inbox',
+    body: 'Assignments, mentions and invites land in one feed you can mark read. Read notifications older than a week are cleared nightly.' },
+  { n: '05', title: 'Progress you can see', to: '/dashboard/leaderboard',
+    body: 'Home shows totals, completion rate and upcoming deadlines. The leaderboard turns closed tasks into XP, with seasons an admin can reset.' },
+  { n: '06', title: 'A record of what happened', to: '/dashboard/activity',
+    body: 'The activity log keeps a filterable history of the workspace, so “who changed this?” has an answer.' },
+]
+
+const flows = [
+  { label: 'Tasks', steps: ['You move a card', 'Written to Firestore', 'Every open board updates'] },
+  { label: 'Messages', steps: ['You send a message', 'Socket.io → Express', 'Saved to MongoDB, pushed to them'] },
+  { label: 'Access', steps: ['Sign in with email or Google', 'Firebase issues an ID token', 'API checks token and role'] },
+]
+
+const stack = [
+  ['React', 'react'], ['Vite', 'vite'], ['Tailwind CSS', 'tailwind'], ['Node.js', 'nodejs'], ['Express', 'express'],
+  ['Socket.IO', 'socketio'], ['MongoDB', 'mongodb'], ['Firebase', 'firebase'],
+]
+
+const roadmap = [
+  { state: 'In progress', item: 'Messaging interface polish: threads and read states in the chat UI.' },
+  { state: 'In progress', item: 'Dashboard analytics wired to live backend metrics.' },
+  { state: 'In progress', item: 'Finer-grained permissions for nested teams.' },
+  { state: 'Later', item: 'Native mobile apps built on the same backend.' },
+]
+
+// A heartbeat trace, repeated across the hero
+const ECG = 'M0 60 H180 L200 60 L212 30 L228 92 L244 18 L258 60 H470 L486 60 L496 44 L510 76 L522 60 H760 L780 60 L792 30 L808 92 L824 18 L838 60 H1050 L1066 60 L1076 44 L1090 76 L1102 60 H1440'
+
+function SectionHead({ eyebrow, title, children, id }) {
+  return (
+    <div className="max-w-2xl" data-reveal>
+      <p className="font-mono text-xs uppercase tracking-[0.14em] text-ink-3">{eyebrow}</p>
+      <h2 id={id} className="mt-3 text-balance font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">{title}</h2>
+      {children && <p className="mt-4 text-pretty text-lg leading-relaxed text-ink-2">{children}</p>}
+    </div>
+  )
+}
+
+function PageCard({ page, admin }) {
+  const Icon = page.icon
+  return (
+    <li data-reveal>
+      <AppLink
+        to={page.to}
+        className={`group flex h-full flex-col rounded-xl border border-rule bg-white p-5 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-ink ${ring}`}
+      >
+        <span className="flex items-center justify-between">
+          <Icon size={20} aria-hidden="true" className="text-ink-2 transition-colors duration-200 group-hover:text-signal" />
+          <ArrowUpRight size={18} aria-hidden="true" className="text-ink-3 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink" />
+        </span>
+        <span className="mt-4 flex items-center gap-2 font-semibold text-ink">
+          {page.title}
+          {admin && <span className="rounded bg-paper-2 px-1.5 py-0.5 text-[11px] font-medium text-ink-2">Admin</span>}
+        </span>
+        <span className="mt-1 flex-1 text-sm leading-relaxed text-ink-3">{page.desc}</span>
+        <code className="mt-4 block truncate font-mono text-[11px] text-ink-3">{page.route}</code>
+      </AppLink>
+    </li>
+  )
+}
 
 export default function Home() {
-  const navigate = useNavigate()
+  const { currentUser } = useAuth()
+  const root = useRef(null)
 
-  const handleDemoClick = () => navigate('/login')
+  // Deep links like /#pages: the section only exists after render, so jump to it now
+  useEffect(() => {
+    const target = window.location.hash && document.querySelector(window.location.hash)
+    if (target) requestAnimationFrame(() => target.scrollIntoView({ behavior: 'instant' }))
+  }, [])
+
+  useGSAP(() => {
+    const mm = gsap.matchMedia()
+
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      // Hero: headline lines rise out of their masks, then the rest follows
+      const trace = root.current.querySelector('[data-ecg]')
+      const len = trace.getTotalLength()
+      gsap.set(trace, { strokeDasharray: len, strokeDashoffset: len })
+
+      gsap.timeline({ defaults: { ease: 'power3.out' } })
+        .from('[data-line]', { yPercent: 110, duration: 0.9, stagger: 0.09 })
+        .from('[data-hero-fade]', { autoAlpha: 0, y: 14, duration: 0.6, stagger: 0.08 }, '-=0.55')
+        .to(trace, { strokeDashoffset: 0, duration: 1.8, ease: 'power2.inOut' }, 0.2)
+        .from('[data-hero-board]', { autoAlpha: 0, y: 40, duration: 1 }, 0.35)
+
+      // A single blip keeps travelling along the trace while the hero is visible
+      const blip = root.current.querySelector('[data-blip]')
+      const blipLen = blip.getTotalLength()
+      gsap.set(blip, { strokeDasharray: `70 ${blipLen}`, strokeDashoffset: 70 })
+      gsap.to(blip, {
+        strokeDashoffset: -blipLen,
+        duration: 5.5,
+        ease: 'none',
+        repeat: -1,
+        delay: 1.6,
+        scrollTrigger: { trigger: '[data-hero]', start: 'top top', end: 'bottom top', toggleActions: 'play pause resume pause' },
+      })
+
+      // Everything below the fold eases in as it arrives, in small batches
+      gsap.set('[data-reveal]', { autoAlpha: 0, y: 18 })
+      ScrollTrigger.batch('[data-reveal]', {
+        start: 'top 88%',
+        once: true,
+        onEnter: (els) => gsap.to(els, { autoAlpha: 1, y: 0, duration: 0.6, stagger: 0.06, ease: 'power2.out', overwrite: true }),
+      })
+
+      // Feature rules draw across as each row enters
+      gsap.utils.toArray('[data-rule]').forEach((el) => {
+        gsap.from(el, { scaleX: 0, transformOrigin: 'left center', duration: 0.9, ease: 'power3.inOut',
+          scrollTrigger: { trigger: el, start: 'top 90%', once: true } })
+      })
+
+      // Flow connectors fill in step by step, tied to scroll
+      gsap.utils.toArray('[data-flow]').forEach((row) => {
+        gsap.from(row.querySelectorAll('[data-connector]'), {
+          scaleX: 0, transformOrigin: 'left center', stagger: 0.5, ease: 'none',
+          scrollTrigger: { trigger: row, start: 'top 85%', end: 'top 55%', scrub: 0.6 },
+        })
+      })
+    })
+
+    // Fonts can shift layout after first paint; re-measure triggers once they settle
+    document.fonts?.ready.then(() => ScrollTrigger.refresh())
+  }, { scope: root })
+
+  const primary = currentUser
+    ? { to: '/dashboard', label: 'Open your dashboard' }
+    : { to: '/signup', label: 'Create a workspace' }
 
   return (
-    <div className="min-h-screen w-full bg-white selection:bg-purple-100 selection:text-purple-700 font-sans text-slate-900 overflow-x-hidden">
+    <div ref={root} data-landing-root className="landing min-h-dvh overflow-x-clip bg-paper font-display text-ink antialiased selection:bg-signal-tint selection:text-ink">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-ink focus:px-4 focus:py-2 focus:text-paper">
+        Skip to content
+      </a>
       <Navbar />
 
-      {/* ================= HERO SECTION ================= */}
-      <div className="relative pt-28 pb-20 md:pt-40 md:pb-32 overflow-hidden">
-        
-        {/* Subtle Pulse Background Animation */}
-        <div className="absolute inset-0 z-0 opacity-90 pointer-events-none">
-           <svg className="absolute top-[15%] left-0 w-full h-40 stroke-purple-200" fill="none">
-             <path d="M0 64 L200 64 L220 30 L240 90 L260 64 L400 64 L420 20 L440 100 L460 64 L1000 64" strokeWidth="1.5" className="animate-pulse" />
-           </svg>
-        </div>
-
-        {/* Background Blobs */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full z-0 pointer-events-none">
-          <div className="absolute top-20 left-10 w-[500px] h-[500px] bg-purple-200/40 rounded-full mix-blend-multiply filter blur-[120px] animate-blob"></div>
-          <div className="absolute top-40 right-10 w-[400px] h-[400px] bg-blue-200/40 rounded-full mix-blend-multiply filter blur-[120px] animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-1/2 w-[600px] h-[600px] bg-pink-200/40 rounded-full mix-blend-multiply filter blur-[120px] animate-blob animation-delay-4000"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-4xl mx-auto mb-20">
-            
-            {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-purple-100 shadow-sm text-purple-700 text-xs font-bold uppercase tracking-wider mb-8 animate-fade-in-up hover:scale-105 transition-transform cursor-default">
-              <Activity size={14} className="animate-pulse text-purple-500" />
-              The heartbeat of your workflow
-            </div>
-
-            {/* Headline */}
-            <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1] text-slate-900">
-              Keep your projects <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 animate-gradient-x">
-                alive and kicking.
-              </span>
-            </h1>
-
-            <p className="text-xl text-slate-500 mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
-              Pulse is the all-in-one workspace that syncs your team's rhythm. 
-              Tasks, Docs, and Goals in one central hub.
+      <main id="main">
+        {/* ================= HERO ================= */}
+        <section data-hero className="relative pt-28 sm:pt-36" aria-labelledby="hero-title">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <p data-hero-fade className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.14em] text-ink-3">
+              {/* A tiny three-column board; the orange card is the one that just moved */}
+              <svg width="17" height="13" viewBox="0 0 17 13" aria-hidden="true" className="shrink-0">
+                <rect x="0" y="0" width="4.5" height="3.5" rx="1" className="fill-ink-3" />
+                <rect x="0" y="4.75" width="4.5" height="3.5" rx="1" className="fill-ink-3" />
+                <rect x="6.25" y="0" width="4.5" height="3.5" rx="1" className="fill-ink-3" />
+                <rect x="12.5" y="0" width="4.5" height="3.5" rx="1" className="fill-pulse" />
+                <rect x="12.5" y="4.75" width="4.5" height="3.5" rx="1" className="fill-ink-3" />
+                <rect x="12.5" y="9.5" width="4.5" height="3.5" rx="1" className="fill-ink-3" />
+              </svg>
+              Task workspace for small teams
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg blur opacity-40 group-hover:opacity-75 transition duration-200"></div>
-                <button 
-                  onClick={() => navigate('/signup')}
-                  className="relative px-8 py-4 bg-slate-900 rounded-lg text-white font-bold text-lg shadow-2xl hover:bg-slate-800 transition-all flex items-center gap-2"
-                >
-                  Start for Free
-                  <Zap size={18} fill="currentColor" className="text-yellow-400" />
-                </button>
-              </div>
-              <button 
-                onClick={handleDemoClick}
-                className="px-8 py-4 bg-white text-slate-700 font-bold text-lg rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
-              >
-                Sign In
-              </button>
-            </div>
-          </div>
+            <div className="mt-6 grid gap-8 lg:grid-cols-12 lg:items-end lg:gap-10">
+              <h1 id="hero-title" className="font-display text-[2.5rem] font-extrabold leading-[1.02] tracking-[-0.035em] text-ink sm:text-6xl lg:col-span-8 lg:text-[4.25rem]">
+                {['Your team’s work,', 'updated the moment', 'it changes.'].map((line) => (
+                  <span key={line} className="block overflow-hidden pb-[0.08em]">
+                    <span data-line className="block">{line}</span>
+                  </span>
+                ))}
+              </h1>
 
-          {/* Product Preview Container */}
-          <div className="relative mx-auto max-w-6xl mt-16 group perspective-1000">
-            {/* Window Frame */}
-            <div className="rounded-xl bg-slate-900 p-2 shadow-2xl ring-1 ring-slate-900/10 transform transition-transform duration-700 hover:rotate-x-1 hover:shadow-purple-500/20">
-              <div className="rounded-lg bg-[#15171B] overflow-hidden flex flex-col aspect-[16/9] md:aspect-[21/9]">
-                
-                {/* Preview Topbar */}
-                <div className="h-10 border-b border-white/5 flex items-center px-4 justify-between bg-[#1E2025]">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                      <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                      <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 items-center text-slate-500 text-xs font-mono">
-                    <Activity size={12} className="text-purple-500" /> Pulse_Dashboard.exe
-                  </div>
+              <div className="lg:col-span-4 lg:pb-2">
+                <p data-hero-fade className="max-w-md text-pretty text-lg leading-relaxed text-ink-2">
+                  Pulse keeps tasks, conversations and progress in one place. Move a card and everyone sees it. No refresh, no status meeting.
+                </p>
+
+                <div data-hero-fade className="mt-7 flex flex-wrap items-center gap-3">
+                  <AppLink
+                    to={primary.to}
+                    className={`group inline-flex h-12 items-center gap-2 rounded-lg bg-ink px-5 font-semibold text-paper transition-colors duration-200 hover:bg-signal-strong ${ring}`}
+                  >
+                    {primary.label}
+                    <ArrowRight size={18} aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </AppLink>
+                  {!currentUser && (
+                    <AppLink
+                      to="/login"
+                      className={`inline-flex h-12 items-center rounded-lg border border-ink/20 px-5 font-semibold text-ink transition-colors duration-200 hover:border-ink hover:bg-white ${ring}`}
+                    >
+                      Log in
+                    </AppLink>
+                  )}
                 </div>
 
-                <div className="flex-1 flex overflow-hidden">
-                  {/* Preview Sidebar */}
-                  <div className="w-48 bg-[#15171B] border-r border-white/5 p-3 hidden md:flex flex-col gap-4">
-                    <div className="space-y-2">
-                       <div className="h-6 w-3/4 bg-white/5 rounded animate-pulse"></div>
-                       <div className="h-6 w-full bg-white/5 rounded animate-pulse delay-75"></div>
-                       <div className="h-6 w-5/6 bg-white/5 rounded animate-pulse delay-100"></div>
-                    </div>
-                  </div>
-
-                  {/* Preview Main Content */}
-                  <div className="flex-1 bg-[#0F1115] p-6 flex flex-col relative">
-                    {/* Floating Pulse Graph */}
-                    <div className="absolute right-6 top-6 w-32 h-16 bg-white/5 rounded border border-white/10 flex items-end justify-between px-2 pb-2 backdrop-blur-sm">
-                       <div className="w-1 bg-purple-500 h-4 rounded-t"></div>
-                       <div className="w-1 bg-purple-500 h-8 rounded-t"></div>
-                       <div className="w-1 bg-purple-500 h-6 rounded-t"></div>
-                       <div className="w-1 bg-purple-500 h-10 rounded-t"></div>
-                       <div className="w-1 bg-purple-500 h-12 rounded-t shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
-                       <div className="w-1 bg-slate-600 h-3 rounded-t"></div>
-                    </div>
-
-                    <div className="flex justify-between items-end mb-8">
-                      <div>
-                        <div className="flex gap-2 text-xs text-slate-500 mb-2">
-                          <span>Spaces</span>
-                          <span>/</span>
-                          <span>Product</span>
-                        </div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-3">
-                          <span className="relative flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                          </span>
-                          Live Roadmap
-                        </h2>
-                      </div>
-                    </div>
-
-                    {/* Preview List Items */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-4 py-3 border-b border-white/5 text-sm hover:bg-white/5 px-2 -mx-2 transition-colors cursor-default">
-                        <div className="w-4 h-4 rounded-full border-2 border-purple-500"></div>
-                        <span className="text-slate-200 flex-1 font-medium">Launch v2.0 Beta</span>
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400 bg-purple-500/10 px-2 py-1 rounded">In Pulse</span>
-                        <div className="w-6 h-6 rounded-full bg-blue-600 text-[10px] text-white flex items-center justify-center">JD</div>
-                      </div>
-                      <div className="flex items-center gap-4 py-3 border-b border-white/5 text-sm hover:bg-white/5 px-2 -mx-2 transition-colors cursor-default">
-                        <div className="w-4 h-4 rounded-full border-2 border-slate-600"></div>
-                        <span className="text-slate-400 flex-1">Update Documentation</span>
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 bg-white/5 px-2 py-1 rounded">Queue</span>
-                        <div className="w-6 h-6 rounded-full bg-slate-700 text-[10px] text-white flex items-center justify-center">AS</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <p data-hero-fade className="mt-5 text-sm text-ink-3">
+                  Open source under the ISC license ·{' '}
+                  <a href={REPO_URL} target="_blank" rel="noreferrer" className={`rounded font-medium text-ink-2 underline decoration-rule underline-offset-4 transition-colors hover:text-ink hover:decoration-ink ${ring}`}>
+                    View the code
+                  </a>
+                </p>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ================= SOCIAL PROOF ================= */}
-      <div className="border-y border-slate-100 bg-slate-50/50 py-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-10">Built for focused collaboration</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
-            <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
-              <p className="text-2xl font-black text-slate-900">Real-time</p>
-              <p className="text-sm text-slate-500 mt-1">Task updates, comments, and team presence.</p>
+          {/* Heartbeat trace between the headline and the board */}
+          <svg className="pointer-events-none mt-10 block h-20 w-full sm:mt-14 sm:h-24" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+            <path data-ecg d={ECG} fill="none" className="stroke-ink/25" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+            <path data-blip d={ECG} fill="none" className="stroke-pulse" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="0 99999" />
+          </svg>
+
+          <div data-hero-board className="mx-auto -mt-6 max-w-6xl px-4 sm:-mt-8 sm:px-6 lg:px-8">
+            <HeroBoard />
+          </div>
+        </section>
+
+        {/* ================= VIEWS ================= */}
+        <section id="views" aria-labelledby="views-title" className="mx-auto max-w-6xl px-4 pt-28 sm:px-6 sm:pt-36 lg:px-8">
+          <SectionHead id="views-title" eyebrow="One project, four views" title="Look at the same tasks the way the moment needs.">
+            Plan on the board, triage in the list, audit in the table, schedule on the calendar. Switching views never changes the data underneath.
+          </SectionHead>
+          <div className="mt-12" data-reveal>
+            <ViewsShowcase />
+          </div>
+        </section>
+
+        {/* ================= FEATURES ================= */}
+        <section id="features" aria-labelledby="features-title" className="mx-auto max-w-6xl px-4 pt-28 sm:px-6 sm:pt-36 lg:px-8">
+          <SectionHead id="features-title" eyebrow="What’s inside" title="Built around how small teams actually work." />
+          <ol className="mt-12">
+            {features.map((f) => (
+              <li key={f.n} className="relative">
+                <span data-rule aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-rule" />
+                <div data-reveal className="grid gap-3 py-8 sm:grid-cols-12 sm:gap-6">
+                  <span className="font-mono text-sm tabular-nums text-ink-3 sm:col-span-1 sm:pt-1">{f.n}</span>
+                  <h3 className="font-display text-xl font-bold tracking-tight text-ink sm:col-span-4">{f.title}</h3>
+                  <div className="sm:col-span-7">
+                    <p className="text-pretty leading-relaxed text-ink-2">{f.body}</p>
+                    <AppLink
+                      to={f.to}
+                      className={`group mt-3 inline-flex min-h-10 items-center gap-1.5 rounded font-mono text-xs text-signal transition-colors hover:text-signal-strong ${ring}`}
+                    >
+                      {f.to}
+                      <ArrowRight size={14} aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                    </AppLink>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <span data-rule aria-hidden="true" className="block h-px bg-rule" />
+        </section>
+
+        {/* ================= EVERY PAGE ================= */}
+        <section id="pages" aria-labelledby="pages-title" className="mx-auto max-w-6xl px-4 pt-28 sm:px-6 sm:pt-36 lg:px-8">
+          <SectionHead id="pages-title" eyebrow="Jump straight in" title="Every page in Pulse, one click away.">
+            Signed out? You’ll be asked to log in, then taken straight to the page you picked.
+          </SectionHead>
+
+          <div className="mt-12 space-y-12">
+            <div>
+              <h3 className="text-sm font-semibold text-ink-2" data-reveal>Workspace</h3>
+              <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {workspacePages.map((p) => <PageCard key={p.route} page={p} />)}
+              </ul>
             </div>
-            <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
-              <p className="text-2xl font-black text-slate-900">Multi-view</p>
-              <p className="text-sm text-slate-500 mt-1">Board, list, table, and calendar workflows.</p>
+            <div>
+              <h3 className="text-sm font-semibold text-ink-2" data-reveal>
+                Project views <span className="font-normal text-ink-3">· pick a project from the sidebar once you’re in</span>
+              </h3>
+              <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {projectViews.map((p) => <PageCard key={p.route} page={p} />)}
+              </ul>
             </div>
-            <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
-              <p className="text-2xl font-black text-slate-900">Role-aware</p>
-              <p className="text-sm text-slate-500 mt-1">Admin controls with member-focused views.</p>
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-2" data-reveal>
+                <ShieldCheck size={16} aria-hidden="true" /> Admin <span className="font-normal text-ink-3">· visible to workspace admins</span>
+              </h3>
+              <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {adminPages.map((p) => <PageCard key={p.route} page={p} admin />)}
+              </ul>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* ================= BENTO GRID FEATURES ================= */}
-      <div className="py-32 bg-white relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-20">
-            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 tracking-tight">
-              Everything you need to <br/> find your <span className="text-purple-600">flow</span>.
-            </h2>
-            <p className="text-lg text-slate-500 leading-relaxed">
-              Stop toggling between apps. Pulse brings your tasks, docs, and team communication into a single, living operating system.
-            </p>
-          </div>
+        {/* ================= HOW IT WORKS ================= */}
+        <section id="stack" aria-labelledby="stack-title" className="mx-auto max-w-6xl px-4 pt-28 sm:px-6 sm:pt-36 lg:px-8">
+          <SectionHead id="stack-title" eyebrow="How it works" title="Plain, well-known parts, wired for speed.">
+            Firebase handles identity and live task data. An Express server with Socket.io carries messages and presence, backed by MongoDB.
+          </SectionHead>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* Card 1: Flexible Workflows */}
-            <div className="col-span-1 md:col-span-2 bg-slate-50 rounded-[2rem] p-10 border border-slate-100 relative overflow-hidden group hover:shadow-2xl hover:shadow-slate-200 transition-all duration-500">
-              <div className="relative z-10">
-                <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 mb-6 shadow-sm group-hover:scale-110 transition-transform">
-                  <Layers size={28} />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-3">Flexible Workflows</h3>
-                <p className="text-slate-500 max-w-md text-lg">Customize your view with Lists, Boards, Calendars, or Gantt charts. Pulse adapts to how your team works best.</p>
-              </div>
-              
-              {/* Abstract UI Decoration */}
-              <div className="absolute right-0 bottom-0 w-2/3 h-56 bg-white rounded-tl-3xl shadow-xl border-l border-t border-slate-100 p-6 translate-y-8 translate-x-8 group-hover:translate-x-4 group-hover:translate-y-4 transition-transform duration-500">
-                 <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-5 h-5 rounded border-2 border-blue-500"></div>
-                      <div className="h-3 w-32 bg-slate-100 rounded-full"></div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-5 h-5 rounded border-2 border-purple-500"></div>
-                      <div className="h-3 w-48 bg-slate-100 rounded-full"></div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-5 h-5 rounded border-2 border-pink-500"></div>
-                      <div className="h-3 w-24 bg-slate-100 rounded-full"></div>
-                    </div>
-                 </div>
-              </div>
-            </div>
-
-            {/* Card 2: Vital Signs (Dark Card) */}
-            <div className="bg-[#0F172A] rounded-[2rem] p-10 border border-slate-800 text-white relative overflow-hidden group hover:shadow-2xl hover:shadow-purple-900/20 transition-all duration-500">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600 rounded-full mix-blend-screen filter blur-[80px] opacity-20 group-hover:opacity-30 transition-opacity"></div>
-              <div className="relative z-10">
-                <div className="w-14 h-14 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
-                  <Activity size={28} />
-                </div>
-                <h3 className="text-2xl font-bold mb-3">Project Vitals</h3>
-                <p className="text-slate-400 text-lg">Monitor team velocity and workload in real-time. Spot burnout before it happens.</p>
-                
-                <div className="mt-10 h-32 flex items-end gap-1.5">
-                  {[40, 65, 45, 80, 55, 90, 70, 50, 85].map((h, i) => (
-                    <div key={i} className="flex-1 bg-purple-500/30 rounded-t hover:bg-purple-500 transition-colors duration-300" style={{height: `${h}%`}}></div>
+          <div className="mt-12 space-y-4">
+            {flows.map((f) => (
+              <div key={f.label} data-flow data-reveal className="rounded-xl border border-rule bg-white p-5 sm:p-6">
+                <p className="font-mono text-xs uppercase tracking-[0.14em] text-ink-3">{f.label}</p>
+                <ol className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-0">
+                  {f.steps.map((s, i) => (
+                    <React.Fragment key={s}>
+                      <li className="flex items-center gap-3 sm:shrink-0">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-ink/15 font-mono text-xs text-ink-2">{i + 1}</span>
+                        <span className="font-medium text-ink">{s}</span>
+                      </li>
+                      {i < f.steps.length - 1 && (
+                        <li aria-hidden="true" className="mx-4 hidden h-px flex-1 bg-paper-2 sm:block">
+                          <span data-connector className="block h-px w-full bg-signal" />
+                        </li>
+                      )}
+                    </React.Fragment>
                   ))}
-                </div>
+                </ol>
               </div>
-            </div>
+            ))}
+          </div>
 
-            {/* Card 3: Collab */}
-            <div className="bg-white rounded-[2rem] p-10 border border-slate-200 relative overflow-hidden hover:border-purple-200 transition-colors duration-300 group hover:shadow-xl">
-              <div className="w-14 h-14 bg-pink-100 rounded-2xl flex items-center justify-center text-pink-600 mb-6 group-hover:scale-110 transition-transform">
-                <MessageSquare size={28} />
+          <div className="mt-12" data-reveal>
+            <p className="text-sm font-semibold text-ink-2">Built with</p>
+            <ul className="mt-4 flex flex-wrap gap-x-8 gap-y-5">
+              {stack.map(([name, file]) => (
+                <li key={file} className="flex items-center gap-2.5 text-sm font-medium text-ink-2">
+                  <img src={`/logos/${file}.svg`} alt="" width="22" height="22" loading="lazy" className="h-[22px] w-[22px] object-contain" />
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ================= ROADMAP ================= */}
+        <section id="roadmap" aria-labelledby="roadmap-title" className="mx-auto max-w-6xl px-4 pt-28 sm:px-6 sm:pt-36 lg:px-8">
+          <div className="grid gap-10 lg:grid-cols-12">
+            <div className="lg:col-span-5">
+              <SectionHead id="roadmap-title" eyebrow="Roadmap" title="What’s being built next.">
+                Pulse is actively developed. Here’s what’s on the bench right now.
+              </SectionHead>
+            </div>
+            <ul className="divide-y divide-rule border-y border-rule lg:col-span-7">
+              {roadmap.map((r) => (
+                <li key={r.item} data-reveal className="flex items-start gap-4 py-5">
+                  <span className={`mt-0.5 w-24 shrink-0 rounded py-0.5 text-center font-mono text-[11px] ${r.state === 'Later' ? 'bg-paper-2 text-ink-2' : 'bg-signal-tint text-signal-strong'}`}>
+                    {r.state}
+                  </span>
+                  <span className="leading-relaxed text-ink-2">{r.item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ================= CTA ================= */}
+        <section aria-labelledby="cta-title" className="mx-auto max-w-6xl px-4 py-28 sm:px-6 sm:py-36 lg:px-8">
+          <div data-reveal className="rounded-2xl bg-ink px-6 py-14 text-paper sm:px-12 sm:py-16">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-xl">
+                <h2 id="cta-title" className="text-balance font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                  {currentUser ? 'Your workspace is waiting.' : 'Set up your workspace in a minute.'}
+                </h2>
+                <p className="mt-4 text-lg leading-relaxed text-paper/75">
+                  {currentUser
+                    ? 'Pick up where you left off: your tasks, messages and board are live.'
+                    : 'Create an account, make a project, invite your team. That’s the whole setup.'}
+                </p>
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">Contextual Chat</h3>
-              <p className="text-slate-500 text-lg">Discuss tasks right where the work happens. No more lost threads.</p>
-            </div>
-
-            {/* Card 4: Goals */}
-            <div className="col-span-1 md:col-span-2 bg-gradient-to-br from-purple-50 to-white rounded-[2rem] p-10 border border-purple-100 relative overflow-hidden group hover:shadow-xl hover:shadow-purple-100 transition-all duration-500">
-               <div className="flex flex-col md:flex-row items-center gap-12">
-                 <div className="flex-1">
-                    <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600 mb-6 group-hover:scale-110 transition-transform">
-                      <BarChart3 size={28} />
-                    </div>
-                    <h3 className="text-2xl font-bold text-slate-900 mb-3">Set Goals, Smash Them</h3>
-                    <p className="text-slate-500 text-lg">Connect daily tasks to high-level company objectives. Keep everyone aligned on the heartbeat of the mission.</p>
-                 </div>
-                 
-                 {/* Floating Card Decoration */}
-                 <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-100 w-full md:w-72 transform rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                    <div className="flex justify-between text-base font-bold text-slate-700 mb-3">
-                      <span>Q3 Revenue</span>
-                      <span className="text-purple-600">82%</span>
-                    </div>
-                    <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 w-[82%] relative">
-                        <div className="absolute top-0 right-0 bottom-0 w-2 bg-white/30 animate-pulse"></div>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex items-center gap-2 text-xs text-slate-400 font-medium">
-                        <CheckCircle2 size={14} className="text-green-500" /> On Track
-                    </div>
-                 </div>
-               </div>
+              <div className="flex flex-wrap gap-3">
+                <AppLink
+                  to={primary.to}
+                  className="group inline-flex h-12 items-center gap-2 rounded-lg bg-paper px-5 font-semibold text-ink transition-colors duration-200 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper"
+                >
+                  {primary.label}
+                  <ArrowRight size={18} aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                </AppLink>
+                {!currentUser && (
+                  <AppLink
+                    to="/login"
+                    className="inline-flex h-12 items-center rounded-lg border border-paper/25 px-5 font-semibold text-paper transition-colors duration-200 hover:border-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper"
+                  >
+                    Log in
+                  </AppLink>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ================= CTA SECTION ================= */}
-      <div className="py-32 bg-[#0F172A] relative overflow-hidden">
-         {/* Noise Texture */}
-         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-20 mix-blend-overlay"></div>
-         
-         {/* Background Pulse Glow */}
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-600 rounded-full mix-blend-screen filter blur-[150px] opacity-20 animate-pulse"></div>
-         
-         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-            <h2 className="text-4xl md:text-6xl font-black text-white mb-8 tracking-tight">
-              Ready to find your rhythm?
-            </h2>
-            <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto">
-              Join the workspace that adapts to you, not the other way around. 
-              Create your workspace and start organizing work today.
-            </p>
-            <button 
-              onClick={() => navigate('/signup')}
-              className="px-12 py-5 bg-white text-slate-900 rounded-full font-bold text-lg hover:bg-slate-100 transition-all transform hover:scale-105 shadow-2xl hover:shadow-purple-500/20 flex items-center gap-3 mx-auto"
-            >
-              Get Started for Free <ArrowRight size={20} />
-            </button>
-         </div>
-      </div>
+        </section>
+      </main>
 
       {/* ================= FOOTER ================= */}
-      <footer className="bg-white border-t border-slate-200 pt-20 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-3 font-bold text-2xl text-slate-900 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-                  <Activity size={20} />
-                </div>
-                Pulse
-              </div>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                Making the world more productive, <br/> one heartbeat at a time.
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="font-bold text-slate-900 mb-6">Product</h4>
-              <ul className="space-y-4 text-sm text-slate-500 font-medium">
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Features</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Pricing</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Enterprise</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Changelog</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-slate-900 mb-6">Resources</h4>
-              <ul className="space-y-4 text-sm text-slate-500 font-medium">
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Docs</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Community</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">API</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-slate-900 mb-6">Company</h4>
-              <ul className="space-y-4 text-sm text-slate-500 font-medium">
-                <li><a href="#" className="hover:text-purple-600 transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Legal</a></li>
-                <li><a href="#" className="hover:text-purple-600 transition-colors">Contact</a></li>
-              </ul>
-            </div>
+      <footer className="border-t border-rule">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-5 lg:px-8">
+          <div className="lg:col-span-2">
+            <PulseMark />
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-ink-3">
+              A real-time task workspace for small teams. Built by Aditya Sharma at Lovely Professional University.
+            </p>
           </div>
-          
-          <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-sm text-slate-400 font-medium">© 2026 Pulse. All rights reserved.</div>
-            <div className="flex gap-6">
-              {/* Social links */}
-              <div className="w-10 h-10 bg-slate-50 border border-slate-200 rounded-full hover:bg-slate-100 hover:border-purple-300 hover:text-purple-600 flex items-center justify-center transition-all cursor-pointer text-slate-400">
-                 <span className="sr-only">Twitter</span>
-                 <svg fill="currentColor" viewBox="0 0 24 24" className="w-4 h-4"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg>
-              </div>
-              <div className="w-10 h-10 bg-slate-50 border border-slate-200 rounded-full hover:bg-slate-100 hover:border-purple-300 hover:text-purple-600 flex items-center justify-center transition-all cursor-pointer text-slate-400">
-                 <span className="sr-only">GitHub</span>
-                 <svg fill="currentColor" viewBox="0 0 24 24" className="w-4 h-4"><path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" /></svg>
-              </div>
-            </div>
-          </div>
+
+          <nav aria-label="On this page">
+            <p className="text-sm font-semibold text-ink">On this page</p>
+            <ul className="mt-3 space-y-1">
+              {[...sections, { label: 'Roadmap', href: '#roadmap' }].map((s) => (
+                <li key={s.href}>
+                  <a href={s.href} className={`inline-flex min-h-9 items-center rounded text-sm text-ink-3 transition-colors hover:text-ink ${ring}`}>{s.label}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="App pages">
+            <p className="text-sm font-semibold text-ink">App</p>
+            <ul className="mt-3 space-y-1">
+              {[...workspacePages, ...adminPages].map((p) => (
+                <li key={p.route}>
+                  <AppLink to={p.to} className={`inline-flex min-h-9 items-center rounded text-sm text-ink-3 transition-colors hover:text-ink ${ring}`}>{p.title}</AppLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Account and project">
+            <p className="text-sm font-semibold text-ink">Account</p>
+            <ul className="mt-3 space-y-1">
+              <li><AppLink to="/login" className={`inline-flex min-h-9 items-center rounded text-sm text-ink-3 transition-colors hover:text-ink ${ring}`}>Log in</AppLink></li>
+              <li><AppLink to="/signup" className={`inline-flex min-h-9 items-center rounded text-sm text-ink-3 transition-colors hover:text-ink ${ring}`}>Create account</AppLink></li>
+            </ul>
+            <p className="mt-6 text-sm font-semibold text-ink">Project</p>
+            <ul className="mt-3 space-y-1">
+              <li>
+                <a href={REPO_URL} target="_blank" rel="noreferrer" className={`inline-flex min-h-9 items-center gap-2 rounded text-sm text-ink-3 transition-colors hover:text-ink ${ring}`}>
+                  <img src="/logos/github.svg" alt="" width="14" height="14" className="h-3.5 w-3.5" /> Source on GitHub
+                </a>
+              </li>
+              <li>
+                <a href={`${REPO_URL}#readme`} target="_blank" rel="noreferrer" className={`inline-flex min-h-9 items-center rounded text-sm text-ink-3 transition-colors hover:text-ink ${ring}`}>Setup guide</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+        <div className="border-t border-rule">
+          <p className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-3 sm:px-6 lg:px-8">© 2026 Pulse · ISC License</p>
         </div>
       </footer>
     </div>

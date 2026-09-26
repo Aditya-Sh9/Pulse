@@ -77,7 +77,7 @@ export default function Leaderboard() {
         particleCount: 150,
         spread: 80,
         origin: { y: 0.6 },
-        colors: ['#A855F7', '#3B82F6', '#EAB308'],
+        colors: ['#45C1AA', '#F57D43', '#EAB308'],
         zIndex: 9999
       });
     }
@@ -107,19 +107,18 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="p-8 h-full flex flex-col bg-[#0F1117] text-white overflow-y-auto relative">
+    <div className="p-8 h-full flex flex-col bg-base text-white overflow-y-auto relative">
 
       {/* Ambient background glow */}
-      <div className="absolute top-0 inset-x-0 h-96 bg-gradient-to-b from-purple-900/20 via-[#0F1117] to-transparent pointer-events-none" />
 
       {/* Header with Admin Controls */}
       <div className="relative mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 z-10">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
-          <h1 className="text-4xl font-black mb-2 flex items-center gap-3">
+          <h1 className="text-[26px] leading-tight font-semibold text-neutral-50 tracking-[-0.02em] mb-2 flex items-center gap-3">
             <Trophy className="text-yellow-500 drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]" size={36} />
             Hall of Fame
           </h1>
-          <p className="text-gray-400 font-medium">Complete tasks and earn XP.</p>
+          <p className="text-neutral-400 font-medium">Complete tasks and earn XP.</p>
         </motion.div>
 
         {userRole === 'admin' && (
@@ -129,13 +128,13 @@ export default function Leaderboard() {
           >
             <button
               onClick={() => setShowManageModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5"
+              className="flex items-center gap-2 px-5 py-2.5 bg-accent-600 hover:bg-accent-500 text-white rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5"
             >
               <Gift size={18} /> Manage XP
             </button>
             <button
               onClick={() => setShowResetConfirm(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#1E1F21]/80 backdrop-blur-md border border-[#2B2D31] hover:bg-[#2B2D31] text-gray-300 rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5"
+              className="flex items-center gap-2 px-4 py-2.5 bg-card border border-raised hover:bg-raised text-neutral-300 rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5"
             >
               <RotateCcw size={18} /> New Season
             </button>
@@ -168,18 +167,17 @@ export default function Leaderboard() {
                     className="flex flex-col items-center w-28 sm:w-36 group"
                   >
                     <div className="relative mb-5 transition-transform duration-300 group-hover:-translate-y-2">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-800 border-4 border-slate-300 flex items-center justify-center text-xl sm:text-2xl font-bold z-10 relative shadow-[0_0_20px_rgba(203,213,225,0.15)] overflow-hidden">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-neutral-800 border-2 border-neutral-300 flex items-center justify-center text-xl sm:text-2xl font-bold z-10 relative overflow-hidden">
                         {absoluteTopThree[1].avatar}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent"></div>
-                      </div>
-                      <div className="absolute -bottom-3 -right-2 bg-slate-200 text-slate-900 w-8 h-8 rounded-full flex items-center justify-center font-black border-4 border-[#0F1117] z-20 shadow-lg">2</div>
+                                              </div>
+                      <div className="absolute -bottom-3 -right-2 bg-neutral-200 text-neutral-900 w-8 h-8 rounded-full flex items-center justify-center font-bold border-4 border-base z-20 shadow-lg">2</div>
                     </div>
-                    <p className="font-bold text-sm sm:text-base truncate w-full text-center text-slate-200">{absoluteTopThree[1].name}</p>
-                    <div className="flex items-center gap-1 text-slate-300 font-black text-xs sm:text-sm mb-3 bg-slate-800/50 px-3 py-1 rounded-full mt-1 border border-slate-700/50">
-                      <Zap size={14} className="fill-slate-400 text-slate-400" /> {absoluteTopThree[1].productivityScore || 0}
+                    <p className="font-bold text-sm sm:text-base truncate w-full text-center text-neutral-200">{absoluteTopThree[1].name}</p>
+                    <div className="flex items-center gap-1 text-neutral-300 font-bold text-xs sm:text-sm mb-3 bg-neutral-800/50 px-3 py-1 rounded-full mt-1 border border-neutral-700/50">
+                      <Zap size={14} className="fill-neutral-400 text-neutral-400" /> {absoluteTopThree[1].productivityScore || 0}
                     </div>
-                    <div className="w-full bg-gradient-to-t from-slate-900/80 to-slate-800/80 h-32 rounded-t-2xl border-t border-slate-600/50 flex items-start justify-center pt-5 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-colors group-hover:bg-slate-800">
-                      <Medal className="text-slate-400" size={36} />
+                    <div className="w-full bg-card h-32 rounded-t-xl border border-b-0 border-raised border-t-2 border-t-neutral-400/70 flex items-start justify-center pt-5 transition-colors duration-300 group-hover:bg-raised">
+                      <Medal className="text-neutral-400" size={36} />
                     </div>
                   </motion.div>
                 )}
@@ -192,23 +190,21 @@ export default function Leaderboard() {
                   >
                     <div className="relative mb-6 transition-transform duration-300 group-hover:-translate-y-2">
                       <motion.div
-                        animate={{ rotate: [0, 5, -5, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                        className="absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-400 z-30 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]"
+                        className="absolute -top-8 left-1/2 -translate-x-1/2 text-yellow-400 z-30"
                       >
                         <Star className="fill-yellow-400" size={32} />
                       </motion.div>
-                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-yellow-900 border-[6px] border-yellow-400 flex items-center justify-center text-3xl font-bold z-10 relative shadow-[0_0_40px_rgba(234,179,8,0.4)] overflow-hidden">
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-yellow-950/60 border-[3px] border-yellow-400 flex items-center justify-center text-3xl font-bold z-10 relative overflow-hidden">
                         {absoluteTopThree[0].avatar}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent"></div>
-                      </div>
-                      <div className="absolute -bottom-4 -right-2 bg-yellow-400 text-yellow-950 w-10 h-10 rounded-full flex items-center justify-center font-black border-4 border-[#0F1117] z-20 shadow-lg text-lg">1</div>
+                                              </div>
+                      <div className="absolute -bottom-4 -right-2 bg-yellow-400 text-yellow-950 w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 border-base z-20 shadow-lg text-lg">1</div>
                     </div>
                     <p className="font-extrabold text-lg sm:text-xl truncate w-full text-center text-yellow-50">{absoluteTopThree[0].name}</p>
-                    <div className="flex items-center gap-1.5 text-yellow-300 font-black text-sm sm:text-base mb-4 bg-yellow-900/40 px-4 py-1.5 rounded-full mt-1 border border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
+                    <div className="flex items-center gap-1.5 text-yellow-300 font-bold text-sm sm:text-base mb-4 bg-yellow-900/40 px-4 py-1.5 rounded-full mt-1 border border-yellow-500/30">
                       <Zap size={16} className="fill-yellow-400 text-yellow-400" /> {absoluteTopThree[0].productivityScore || 0} XP
                     </div>
-                    <div className="w-full bg-gradient-to-t from-yellow-950/80 to-yellow-900/70 h-44 rounded-t-2xl border-t-2 border-yellow-500/50 flex items-start justify-center pt-6 backdrop-blur-md shadow-[inset_0_2px_0_rgba(250,204,21,0.3)] transition-colors group-hover:bg-yellow-900/80">
-                      <Trophy className="text-yellow-400 drop-shadow-md" size={56} />
+                    <div className="w-full bg-card h-44 rounded-t-xl border border-b-0 border-raised border-t-2 border-t-yellow-400/80 flex items-start justify-center pt-6 transition-colors duration-300 group-hover:bg-raised">
+                      <Trophy className="text-yellow-400" size={48} />
                     </div>
                   </motion.div>
                 )}
@@ -220,18 +216,17 @@ export default function Leaderboard() {
                     className="flex flex-col items-center w-28 sm:w-36 group"
                   >
                     <div className="relative mb-5 transition-transform duration-300 group-hover:-translate-y-2">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-orange-950 border-4 border-orange-600 flex items-center justify-center text-xl sm:text-2xl font-bold z-10 relative shadow-[0_0_20px_rgba(234,88,12,0.15)] overflow-hidden">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-orange-950/60 border-2 border-orange-500 flex items-center justify-center text-xl sm:text-2xl font-bold z-10 relative overflow-hidden">
                         {absoluteTopThree[2].avatar}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent"></div>
-                      </div>
-                      <div className="absolute -bottom-3 -right-2 bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-black border-4 border-[#0F1117] z-20 shadow-lg">3</div>
+                                              </div>
+                      <div className="absolute -bottom-3 -right-2 bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-4 border-base z-20 shadow-lg">3</div>
                     </div>
                     <p className="font-bold text-sm sm:text-base truncate w-full text-center text-orange-100">{absoluteTopThree[2].name}</p>
-                    <div className="flex items-center gap-1 text-orange-300 font-black text-xs sm:text-sm mb-3 bg-orange-950/60 px-3 py-1 rounded-full mt-1 border border-orange-800/50">
+                    <div className="flex items-center gap-1 text-orange-300 font-bold text-xs sm:text-sm mb-3 bg-orange-950/60 px-3 py-1 rounded-full mt-1 border border-orange-800/50">
                       <Zap size={14} className="fill-orange-400 text-orange-400" /> {absoluteTopThree[2].productivityScore || 0}
                     </div>
-                    <div className="w-full bg-gradient-to-t from-orange-950/90 to-orange-900/60 h-28 rounded-t-2xl border-t border-orange-700/50 flex items-start justify-center pt-5 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-colors group-hover:bg-orange-900/70">
-                      <Medal className="text-orange-600" size={32} />
+                    <div className="w-full bg-card h-28 rounded-t-xl border border-b-0 border-raised border-t-2 border-t-orange-500/70 flex items-start justify-center pt-5 transition-colors duration-300 group-hover:bg-raised">
+                      <Medal className="text-orange-400" size={32} />
                     </div>
                   </motion.div>
                 )}
@@ -242,46 +237,46 @@ export default function Leaderboard() {
           {/* Controls: Search & Sort */}
           <motion.div
             initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="flex flex-col sm:flex-row gap-4 p-4 bg-[#1E1F21]/60 backdrop-blur-md border border-[#2B2D31] rounded-2xl"
+            className="flex flex-col sm:flex-row gap-4 p-4 bg-card border border-raised rounded-2xl"
           >
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
               <input
                 type="text"
                 placeholder="Search competitors..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-[#0F1117]/50 border border-[#2B2D31] focus:border-purple-500 rounded-xl text-sm focus:outline-none transition-colors"
+                className="w-full pl-10 pr-4 py-2 bg-base/50 border border-raised focus:border-accent-500 rounded-xl text-sm focus:outline-none transition-colors"
                 autoComplete="off"
               />
             </div>
             <div className="relative min-w-[180px]">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 flex items-center pr-2 border-r border-[#2B2D31]">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 flex items-center pr-2 border-r border-raised">
                 <ArrowUpDown size={16} />
               </div>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full pl-12 pr-4 py-2 bg-[#0F1117]/50 border border-[#2B2D31] focus:border-purple-500 rounded-xl text-sm focus:outline-none transition-colors appearance-none cursor-pointer"
+                className="w-full pl-12 pr-4 py-2 bg-base/50 border border-raised focus:border-accent-500 rounded-xl text-sm focus:outline-none transition-colors appearance-none cursor-pointer"
               >
                 <option value="highest">Highest XP</option>
                 <option value="lowest">Lowest XP</option>
                 <option value="alphabetical">Name (A-Z)</option>
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
                 <ChevronDown size={14} />
               </div>
             </div>
           </motion.div>
 
           {/* List Section */}
-          <div className="bg-[#1E1F21]/40 backdrop-blur-sm rounded-3xl border border-[#2B2D31]/80 overflow-hidden shadow-xl">
+          <div className="bg-card rounded-2xl border border-raised/80 overflow-hidden">
             {listMembers.length > 0 ? (
               <motion.div
                 variants={containerVariants}
                 initial="hidden"
                 animate="show"
-                className="divide-y divide-[#2B2D31]/60"
+                className="divide-y divide-raised/60"
               >
                 {listMembers.map((member, index) => {
                   // Determine display rank based on sort/search state
@@ -302,23 +297,23 @@ export default function Leaderboard() {
                       className="flex items-center justify-between p-5 transition-colors group"
                     >
                       <div className="flex items-center gap-5">
-                        <div className="w-10 text-lg font-black text-[#3E4045] text-center group-hover:text-gray-400 transition-colors">
+                        <div className="w-10 text-lg font-bold text-edge text-center group-hover:text-neutral-400 transition-colors">
                           {rankDisplay}
                         </div>
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center font-bold text-lg shadow-inner border border-gray-600/30">
+                        <div className="w-12 h-12 rounded-full bg-neutral-700 flex items-center justify-center font-bold text-lg border border-neutral-600/30">
                           {member.avatar}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-200 text-lg">{member.name}</p>
-                          <p className="text-sm text-gray-500 font-medium capitalize flex items-center gap-1.5">
-                            {member.role === 'admin' && <Star size={12} className="text-purple-400" />}
+                          <p className="font-bold text-neutral-200 text-lg">{member.name}</p>
+                          <p className="text-sm text-neutral-500 font-medium capitalize flex items-center gap-1.5">
+                            {member.role === 'admin' && <Star size={12} className="text-accent-400" />}
                             {member.role || 'Member'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500/10 to-transparent rounded-full border border-purple-500/20 group-hover:border-purple-500/40 transition-colors shadow-[0_0_10px_rgba(168,85,247,0)] group-hover:shadow-[0_0_10px_rgba(168,85,247,0.1)]">
-                        <Zap size={16} className="text-purple-400 fill-purple-400/30" />
-                        <span className="font-black text-purple-300">{member.productivityScore || 0} XP</span>
+                      <div className="flex items-center gap-2 px-4 py-2 bg-accent-500/10 rounded-full border border-accent-500/20 group-hover:border-accent-500/40 transition-colors">
+                        <Zap size={16} className="text-accent-400 fill-accent-400/30" />
+                        <span className="font-bold text-accent-300">{member.productivityScore || 0} XP</span>
                       </div>
                     </motion.div>
                   );
@@ -327,9 +322,9 @@ export default function Leaderboard() {
             ) : (
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="p-16 text-center text-gray-500 bg-[#1E1F21]/20 flex flex-col items-center"
+                className="p-16 text-center text-neutral-500 bg-card flex flex-col items-center"
               >
-                <Trophy size={48} className="mb-4 text-gray-700" />
+                <Trophy size={48} className="mb-4 text-neutral-700" />
                 <p className="text-lg font-medium">No members found.</p>
                 {searchQuery && <p className="text-sm mt-1">Try changing your search query.</p>}
               </motion.div>
@@ -341,13 +336,13 @@ export default function Leaderboard() {
         <div className="xl:col-span-1">
           <motion.div
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}
-            className="sticky top-8 bg-[#1E1F21]/40 backdrop-blur-md rounded-3xl border border-[#2B2D31]/80 shadow-xl overflow-hidden"
+            className="sticky top-8 bg-card/40 backdrop-blur-md rounded-2xl border border-raised/80 overflow-hidden"
           >
-            <div className="p-5 border-b border-[#2B2D31]/60 flex items-center gap-3 bg-gradient-to-r from-purple-900/10 to-transparent">
-              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
-                <Activity size={16} className="text-purple-400" />
+            <div className="p-5 border-b border-raised/60 flex items-center gap-3 bg-accent-900/10">
+              <div className="w-8 h-8 rounded-full bg-accent-500/20 flex items-center justify-center">
+                <Activity size={16} className="text-accent-400" />
               </div>
-              <h3 className="font-bold text-gray-100">Live XP Activity</h3>
+              <h3 className="font-bold text-neutral-100">Live XP Activity</h3>
             </div>
 
             <div className="p-5 space-y-6">
@@ -358,24 +353,24 @@ export default function Leaderboard() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 + (idx * 0.1) }}
-                    className="relative pl-6 before:absolute before:inset-y-0 before:left-[11px] before:w-px before:bg-[#2B2D31] last:before:hidden"
+                    className="relative pl-6 before:absolute before:inset-y-0 before:left-[11px] before:w-px before:bg-raised last:before:hidden"
                   >
-                    <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-[#1E1F21] border border-[#3E4045] flex items-center justify-center shadow-md">
+                    <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-card border border-edge flex items-center justify-center shadow-md">
                       <Zap size={10} className="text-yellow-500 fill-yellow-500/50" />
                     </div>
-                    <div className="bg-[#0F1117]/50 rounded-xl p-3 border border-[#2B2D31]/50 hover:border-purple-500/30 transition-colors cursor-default group">
-                      <p className="text-sm text-gray-300 font-medium group-hover:text-white transition-colors">
-                        <span className="font-bold text-purple-400">{activity.userName}</span> {activity.action}
+                    <div className="bg-base/50 rounded-xl p-3 border border-raised/50 hover:border-accent-500/30 transition-colors cursor-default group">
+                      <p className="text-sm text-neutral-300 font-medium group-hover:text-white transition-colors">
+                        <span className="font-bold text-accent-400">{activity.userName}</span> {activity.action}
                       </p>
-                      <span className="text-xs text-gray-600 mt-2 block font-medium">
+                      <span className="text-xs text-neutral-600 mt-2 block font-medium">
                         {new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </motion.div>
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  <Activity size={24} className="mx-auto mb-3 text-gray-600 opacity-50" />
+                <div className="text-center py-8 text-neutral-500 text-sm">
+                  <Activity size={24} className="mx-auto mb-3 text-neutral-600 opacity-50" />
                   No recent XP activity.
                 </div>
               )}
@@ -396,25 +391,25 @@ export default function Leaderboard() {
             <motion.form
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               onSubmit={handleAwardXP}
-              className="relative z-10 w-full max-w-md bg-[#1E1F21] border border-[#3E4045] rounded-2xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+              className="relative z-10 w-full max-w-md bg-card border border-edge rounded-2xl p-6"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-black text-white flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-                    <Gift className="text-purple-400" size={20} />
+                <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-accent-500/20 flex items-center justify-center border border-accent-500/30">
+                    <Gift className="text-accent-400" size={20} />
                   </div>
                   Manage XP
                 </h3>
-                <button type="button" onClick={() => setShowManageModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#111] text-gray-500 hover:text-white hover:bg-red-500/20 transition-colors"><X size={16} /></button>
+                <button type="button" onClick={() => setShowManageModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-base text-neutral-500 hover:text-white hover:bg-red-500/20 transition-colors"><X size={16} /></button>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <label className="text-xs text-purple-400 font-black uppercase tracking-wider mb-2 block">1. Select Member</label>
+                  <label className="text-xs text-accent-400 font-semibold uppercase tracking-[0.08em] mb-2 block">1. Select Member</label>
                   <select
                     value={selectedUserId}
                     onChange={(e) => setSelectedUserId(e.target.value)}
-                    className="w-full bg-[#111] border border-[#3E4045] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-shadow appearance-none cursor-pointer"
+                    className="w-full bg-base border border-edge text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-shadow appearance-none cursor-pointer"
                   >
                     <option value="" disabled>Choose a champion...</option>
                     {members.map(m => <option key={m.id} value={m.id}>{m.name} • {m.productivityScore || 0} XP</option>)}
@@ -422,13 +417,13 @@ export default function Leaderboard() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-purple-400 font-black uppercase tracking-wider mb-2 block">2. Amount</label>
+                  <label className="text-xs text-accent-400 font-semibold uppercase tracking-[0.08em] mb-2 block">2. Amount</label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {[50, 100, 200, -50].map(val => (
                       <button
                         key={val} type="button"
                         onClick={() => setXpAmount(val)}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${xpAmount === val ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20 scale-105' : 'bg-[#111] border-[#3E4045] text-gray-400 hover:text-white hover:border-gray-500'}`}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${xpAmount === val ? 'bg-accent-600 border-accent-500 text-white scale-105' : 'bg-base border-edge text-neutral-400 hover:text-white hover:border-neutral-500'}`}
                       >
                         {val > 0 ? `+${val}` : val}
                       </button>
@@ -439,28 +434,28 @@ export default function Leaderboard() {
                     value={xpAmount}
                     onChange={(e) => setXpAmount(e.target.value)}
                     placeholder="Custom amount"
-                    className="w-full bg-[#111] border border-[#3E4045] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-shadow"
+                    className="w-full bg-base border border-edge text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-shadow"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs text-purple-400 font-black uppercase tracking-wider mb-2 block">3. Reason</label>
+                  <label className="text-xs text-accent-400 font-semibold uppercase tracking-[0.08em] mb-2 block">3. Reason</label>
                   <textarea
                     value={xpReason}
                     onChange={(e) => setXpReason(e.target.value)}
                     placeholder="e.g. Heroic bug fixing before deployment!"
-                    className="w-full bg-[#111] border border-[#3E4045] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-shadow h-24 resize-none"
+                    className="w-full bg-base border border-edge text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-shadow h-24 resize-none"
                   />
-                  <p className="text-[10px] text-gray-500 mt-1.5 font-medium">This will be broadcasted to their notifications and the live ticker.</p>
+                  <p className="text-[10px] text-neutral-500 mt-1.5 font-medium">This will be broadcasted to their notifications and the live ticker.</p>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-8 pt-5 border-t border-[#2B2D31]">
-                <button type="button" onClick={() => setShowManageModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-400 hover:bg-[#2B2D31] hover:text-white transition-colors">Cancel</button>
+              <div className="flex justify-end gap-3 mt-8 pt-5 border-t border-raised">
+                <button type="button" onClick={() => setShowManageModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-neutral-400 hover:bg-raised hover:text-white transition-colors">Cancel</button>
                 <button
                   type="submit"
                   disabled={!selectedUserId || !xpAmount || !xpReason.trim()}
-                  className="px-6 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20"
+                  className="px-6 py-2.5 rounded-xl text-sm font-bold bg-accent-600 text-white hover:bg-accent-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   <span className="flex items-center gap-2">
                     <Zap size={16} className="fill-white" /> Apply XP
@@ -480,26 +475,26 @@ export default function Leaderboard() {
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowResetConfirm(false)} />
             <motion.div
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-              className="relative z-10 w-full max-w-md bg-[#1E1F21] border border-red-500/30 rounded-2xl p-6 shadow-[0_0_50px_rgba(239,68,68,0.15)]"
+              className="relative z-10 w-full max-w-md bg-card border border-red-500/30 rounded-2xl p-6"
             >
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30 text-red-400">
                   <AlertTriangle size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-white">Start New Season?</h3>
+                  <h3 className="text-xl font-bold text-white">Start New Season?</h3>
                   <p className="text-sm text-red-400 font-bold">WARNING: Destructive Action</p>
                 </div>
               </div>
-              <div className="bg-[#111] border border-[#3E4045] rounded-xl p-4 mb-6">
-                <p className="text-gray-300 text-sm leading-relaxed">
+              <div className="bg-base border border-edge rounded-xl p-4 mb-6">
+                <p className="text-neutral-300 text-sm leading-relaxed">
                   This will clear <strong className="text-white">all XP points</strong> for <strong className="text-white">every member</strong> and start a brand new season globally.
                   This action cannot be undone.
                 </p>
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setShowResetConfirm(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-400 hover:bg-[#2B2D31] hover:text-white transition-colors">Cancel</button>
-                <button onClick={handleResetSeason} className="px-6 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-500 transition-all shadow-lg shadow-red-600/20">
+                <button onClick={() => setShowResetConfirm(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-neutral-400 hover:bg-raised hover:text-white transition-colors">Cancel</button>
+                <button onClick={handleResetSeason} className="px-6 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-500 transition-all shadow-red-600/20">
                   Yes, Reset Everything
                 </button>
               </div>

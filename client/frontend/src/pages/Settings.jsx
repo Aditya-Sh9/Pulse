@@ -4,7 +4,7 @@ import { useProject } from '../context/ProjectContext' // Import ProjectContext 
 import { useNavigate } from 'react-router-dom'
 import {
   Settings as SettingsIcon, Bell, User, Lock, LogOut,
-  Camera, CheckCircle2, Shield, Mail, Calendar, Sparkles
+  Camera, CheckCircle2, Shield, Mail, Calendar
 } from 'lucide-react'
 
 export default function Settings() {
@@ -85,19 +85,19 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-6 md:p-10 h-full flex flex-col bg-[#0F1117] text-white font-sans overflow-y-auto">
+    <div className="p-6 md:p-10 h-full flex flex-col bg-base text-white font-sans overflow-y-auto">
 
       {/* --- Ambient Background --- */}
       <div className="fixed inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-20 pointer-events-none"></div>
 
       {/* --- Header --- */}
       <div className="relative z-10 flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 bg-purple-600/20 border border-purple-500/30 rounded-xl flex items-center justify-center text-purple-400">
+        <div className="w-12 h-12 bg-accent-600/20 border border-accent-500/30 rounded-xl flex items-center justify-center text-accent-400">
           <SettingsIcon size={24} />
         </div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-slate-400 text-sm">Manage your account preferences and profile.</p>
+          <h1 className="text-[26px] leading-tight font-semibold text-neutral-50 tracking-[-0.02em]">Settings</h1>
+          <p className="text-neutral-400 text-sm">Manage your account preferences and profile.</p>
         </div>
       </div>
 
@@ -105,17 +105,17 @@ export default function Settings() {
 
         {/* Left Column: Form */}
         <div className="lg:col-span-2 space-y-6">
-          <form onSubmit={handleSubmit} className="bg-[#1E1F21]/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6 md:p-8 space-y-8">
+          <form onSubmit={handleSubmit} className="bg-card border border-white/5 rounded-2xl p-6 md:p-8 space-y-8">
 
             {/* Profile Section */}
             <div>
-              <div className="flex items-center gap-2 mb-6 text-purple-400 font-bold uppercase tracking-wider text-xs">
+              <div className="flex items-center gap-2 mb-6 text-accent-400 font-semibold uppercase tracking-[0.08em] text-xs">
                 <User size={14} /> Profile Information
               </div>
 
               <div className="flex flex-col sm:flex-row gap-8 items-start">
                 <div className="relative group cursor-pointer">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-3xl font-bold text-white shadow-xl shadow-purple-900/20 border-4 border-[#1E1F21]">
+                  <div className="w-24 h-24 rounded-full bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 flex items-center justify-center text-3xl font-bold text-accent-200 ">
                     {getUserInitials()}
                   </div>
                   <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center border-4 border-transparent">
@@ -125,26 +125,26 @@ export default function Settings() {
 
                 <div className="flex-1 space-y-5 w-full">
                   <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Display Name</label>
+                    <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2 block">Display Name</label>
                     <input
                       type="text"
                       value={formData.displayName}
                       onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                      className="w-full bg-[#111] border border-[#3E4045] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+                      className="w-full bg-base border border-edge rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-accent-500 transition-colors"
                       placeholder="e.g. Jane Doe"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-2">
-                      Email Address <Lock size={12} className="text-slate-600" />
+                    <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2 block flex items-center gap-2">
+                      Email Address <Lock size={12} className="text-neutral-600" />
                     </label>
                     <input
                       type="email"
                       value={formData.email}
                       disabled
-                      className="w-full bg-[#111]/50 border border-[#3E4045]/50 rounded-xl px-4 py-3 text-sm text-slate-500 cursor-not-allowed"
+                      className="w-full bg-base/50 border border-edge/50 rounded-xl px-4 py-3 text-sm text-neutral-500 cursor-not-allowed"
                     />
-                    <p className="text-[10px] text-slate-600 mt-1.5">Email cannot be changed directly for security reasons.</p>
+                    <p className="text-[10px] text-neutral-600 mt-1.5">Email cannot be changed directly for security reasons.</p>
                   </div>
                 </div>
               </div>
@@ -154,7 +154,7 @@ export default function Settings() {
 
             {/* Notifications Section */}
             <div>
-              <div className="flex items-center gap-2 mb-6 text-blue-400 font-bold uppercase tracking-wider text-xs">
+              <div className="flex items-center gap-2 mb-6 text-neutral-400 font-semibold uppercase tracking-[0.08em] text-xs">
                 <Bell size={14} /> Preferences
               </div>
 
@@ -172,9 +172,9 @@ export default function Settings() {
               >
                 <div>
                   <h4 className="font-bold text-sm text-white mb-1">Push Notifications</h4>
-                  <p className="text-xs text-slate-400">Receive alerts when assigned to tasks or mentioned.</p>
+                  <p className="text-xs text-neutral-400">Receive alerts when assigned to tasks or mentioned.</p>
                 </div>
-                <div className={`w-11 h-6 rounded-full p-1 transition-colors ${formData.notifications ? 'bg-purple-600' : 'bg-slate-700'}`}>
+                <div className={`w-11 h-6 rounded-full p-1 transition-colors ${formData.notifications ? 'bg-accent-600' : 'bg-neutral-700'}`}>
                   <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${formData.notifications ? 'translate-x-5' : 'translate-x-0'}`}></div>
                 </div>
               </div>
@@ -194,9 +194,9 @@ export default function Settings() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center gap-2 shadow-xl shadow-white/5 disabled:opacity-50"
+                className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-neutral-200 transition-all flex items-center gap-2 shadow-white/5 disabled:opacity-50"
               >
-                {loading ? 'Saving Changes...' : <><Sparkles size={16} /> Save Changes</>}
+                {loading ? 'Saving Changes...' : <><CheckCircle2 size={16} aria-hidden="true" /> Save Changes</>}
               </button>
             </div>
           </form>
@@ -204,23 +204,23 @@ export default function Settings() {
 
         {/* Right Column: Account Info */}
         <div className="space-y-6">
-          <section className="bg-[#1E1F21]/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6 flex flex-col justify-between h-full min-h-[300px]">
+          <section className="bg-card border border-white/5 rounded-2xl p-6 flex flex-col justify-between h-full min-h-[300px]">
             <div>
-              <div className="flex items-center gap-2 mb-6 text-emerald-400 font-bold uppercase tracking-wider text-xs">
+              <div className="flex items-center gap-2 mb-6 text-emerald-400 font-semibold uppercase tracking-[0.08em] text-xs">
                 <Shield size={14} /> Account Status
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <Mail size={16} className="text-slate-500" />
+                <div className="flex items-center gap-3 text-sm text-neutral-300">
+                  <Mail size={16} className="text-neutral-500" />
                   <span className="truncate">{currentUser?.email}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <Calendar size={16} className="text-slate-500" />
+                <div className="flex items-center gap-3 text-sm text-neutral-300">
+                  <Calendar size={16} className="text-neutral-500" />
                   <span>Joined {userProfile?.createdAt ? new Date(userProfile.createdAt).toLocaleDateString() : 'Recently'}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-300">
-                  <User size={16} className="text-slate-500" />
+                <div className="flex items-center gap-3 text-sm text-neutral-300">
+                  <User size={16} className="text-neutral-500" />
                   <span className="capitalize border border-white/10 px-2 py-0.5 rounded-md text-xs font-bold text-emerald-400 bg-emerald-400/10">
                     {userRole || 'Employee'}
                   </span>

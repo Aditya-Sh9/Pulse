@@ -1,50 +1,62 @@
-import React from 'react'
+import React, { useRef } from 'react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Home, ArrowLeft } from 'lucide-react'
+import { Home, ArrowLeft } from 'lucide-react'
+
+gsap.registerPlugin(useGSAP)
 
 export default function NotFound() {
     const navigate = useNavigate()
+    const root = useRef(null)
+
+    // The trace beats twice, then runs flat: nothing alive at this address.
+    useGSAP(() => {
+        const mm = gsap.matchMedia()
+        mm.add('(prefers-reduced-motion: no-preference)', () => {
+            const trace = root.current.querySelector('[data-trace]')
+            const len = trace.getTotalLength()
+            gsap.timeline()
+                .fromTo(trace, { strokeDasharray: len, strokeDashoffset: len }, { strokeDashoffset: 0, duration: 2.2, ease: 'power1.inOut' })
+                .from('[data-nf]', { autoAlpha: 0, y: 12, duration: 0.6, ease: 'expo.out', stagger: 0.06, clearProps: 'transform' }, 0.3)
+        })
+    }, { scope: root })
 
     return (
-        <div className="min-h-screen bg-[#111] flex items-center justify-center p-6 font-sans text-white relative overflow-hidden">
-            {/* Abstract Background Elements */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div ref={root} className="min-h-dvh bg-base text-neutral-200 flex flex-col items-center justify-center px-6 py-16">
+            <svg viewBox="0 0 640 120" className="w-full max-w-2xl" aria-hidden="true">
+                <path
+                    data-trace
+                    d="M0 60 H110 L126 60 L136 30 L150 94 L164 18 L176 60 H250 L262 60 L270 46 L282 76 L292 60 H640"
+                    fill="none"
+                    className="stroke-accent-400"
+                    strokeWidth="1.75"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                />
+            </svg>
 
-            <div className="max-w-md w-full bg-[#1A1A1C]/80 backdrop-blur-xl border border-[#2B2D31] rounded-2xl p-8 text-center shadow-2xl relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-t-2xl"></div>
-
-                <div className="flex justify-center mb-6 relative">
-                    <div className="relative">
-                        <h1 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-purple-400 to-indigo-600 drop-shadow-lg tracking-tighter">
-                            404
-                        </h1>
-                        <div className="absolute -bottom-2 -right-4 bg-[#2B2D31] rounded-full p-2 border border-[#3E4045] shadow-lg">
-                            <AlertTriangle className="text-yellow-500" size={24} />
-                        </div>
-                    </div>
-                </div>
-
-                <h2 className="text-2xl font-bold text-gray-100 mb-3 tracking-tight">Looks like you're lost.</h2>
-                <p className="text-gray-400 mb-8 max-w-[280px] mx-auto text-sm leading-relaxed">
-                    The page you are looking for doesn't exist, has been removed, or is temporarily unavailable.
+            <div className="mt-10 max-w-md text-center">
+                <p data-nf className="font-mono text-sm text-neutral-500">404</p>
+                <h1 data-nf className="mt-3 text-[28px] leading-tight font-semibold tracking-[-0.02em] text-neutral-50">No pulse at this address.</h1>
+                <p data-nf className="mt-3 text-neutral-400 leading-relaxed">
+                    The page you’re looking for doesn’t exist or has moved. Your workspace is still right where you left it.
                 </p>
 
-                <div className="flex flex-col gap-3">
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="group w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-purple-900/40 active:scale-[0.98]"
-                    >
-                        <Home size={18} className="group-hover:-translate-y-0.5 transition-transform" />
-                        Take me back Home
-                    </button>
-
+                <div data-nf className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
                     <button
                         onClick={() => navigate(-1)}
-                        className="group w-full flex items-center justify-center gap-2 bg-[#2B2D31] hover:bg-[#3E4045] text-gray-300 hover:text-white py-3 rounded-xl font-medium transition-colors border border-[#3E4045] hover:border-gray-500 active:scale-[0.98]"
+                        className="group inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-edge bg-card px-5 font-medium text-neutral-200 transition-colors hover:bg-raised"
                     >
-                        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+                        <ArrowLeft size={17} aria-hidden="true" className="transition-transform duration-200 group-hover:-translate-x-0.5" />
                         Go back
+                    </button>
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-neutral-50 px-5 font-semibold text-[var(--color-base)] transition-colors hover:bg-white"
+                    >
+                        <Home size={17} aria-hidden="true" />
+                        Take me home
                     </button>
                 </div>
             </div>

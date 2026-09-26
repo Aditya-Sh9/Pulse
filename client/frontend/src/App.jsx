@@ -1,9 +1,12 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
 import { DataProvider } from './context/DataContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
+import PulseLoader from './components/PulseLoader'
+import { ShieldAlert } from 'lucide-react'
 
+import { AuthLayout } from './components/auth/AuthShell'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
@@ -30,14 +33,20 @@ import NotFound from './pages/NotFound'
 const AdminRoute = ({ children }) => {
   const { userRole, loading } = useAuth()
 
-  if (loading) return <div className="min-h-screen bg-[#111] flex items-center justify-center text-slate-500">Loading permissions...</div>
+  if (loading) return <PulseLoader label="Checking permissions…" />
 
   if (userRole !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#111] text-white">
-        <div className="text-center p-8 border border-red-500/20 bg-red-500/10 rounded-xl">
-          <h2 className="text-2xl font-bold text-red-400 mb-2">Access Denied</h2>
-          <p className="text-slate-400">You do not have permission to view this page.</p>
+      <div className="h-full min-h-[70vh] flex items-center justify-center p-8">
+        <div className="max-w-sm text-center">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-raised ring-1 ring-inset ring-edge">
+            <ShieldAlert size={22} className="text-neutral-300" aria-hidden="true" />
+          </div>
+          <h2 className="text-xl font-semibold text-neutral-50 tracking-tight">Admins only</h2>
+          <p className="mt-2 text-sm leading-relaxed text-neutral-400">This page is limited to workspace admins. Ask an admin if you need access.</p>
+          <Link to="/dashboard" className="mt-6 inline-flex h-10 items-center rounded-lg border border-edge bg-card px-4 text-sm font-medium text-neutral-100 transition-colors hover:bg-raised">
+            Back to Home
+          </Link>
         </div>
       </div>
     )
@@ -54,8 +63,10 @@ function App() {
           <DataProvider>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
+              <Route element={<AuthLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+              </Route>
 
               <Route
                 path="/dashboard"

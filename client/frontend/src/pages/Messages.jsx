@@ -93,20 +93,20 @@ export default function Messages() {
   }
 
   return (
-    <div className="flex h-full bg-[#0F1117]">
+    <div className="flex h-full bg-base">
 
       {/* Sidebar - Contact List */}
-      <div className="w-80 border-r border-[#2B2D31] bg-[#1E1F21] flex flex-col flex-shrink-0">
-        <div className="p-4 border-b border-[#2B2D31]">
+      <div className="w-80 border-r border-raised bg-card flex flex-col flex-shrink-0">
+        <div className="p-4 border-b border-raised">
           <h2 className="text-lg font-bold text-white mb-4">Messages</h2>
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
             <input
               type="text"
               placeholder="Search team..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#111] border border-[#3E4045] rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+              className="w-full bg-base border border-edge rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-accent-500 transition-colors"
             />
           </div>
         </div>
@@ -123,24 +123,24 @@ export default function Messages() {
                 <div
                   key={contact.id}
                   onClick={() => navigate(`/dashboard/messages/${contact.id}`, { replace: true })}
-                  className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors mb-1 ${selectedUser?.id === contact.id ? 'bg-[#3C245C] border border-purple-500/50' : 'hover:bg-[#2B2D31] border border-transparent'
+                  className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors mb-1 ${selectedUser?.id === contact.id ? 'bg-accent-500/15 border border-accent-500/50' : 'hover:bg-raised border border-transparent'
                     }`}
                 >
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-white shadow-inner">
+                    <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-bold text-white">
                       {contact.avatar}
                     </div>
-                    <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1E1F21] ${contact.status === 'online' ? 'bg-green-500' : 'bg-gray-500'
+                    <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-card ${contact.status === 'online' ? 'bg-green-500' : 'bg-neutral-500'
                       }`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-200 truncate">{contact.name}</p>
-                    <p className="text-xs text-gray-500 truncate capitalize">{contact.role || 'Member'}</p>
+                    <p className="text-sm font-bold text-neutral-200 truncate">{contact.name}</p>
+                    <p className="text-xs text-neutral-500 truncate capitalize">{contact.role || 'Member'}</p>
                   </div>
 
                   {/* UNREAD BADGE */}
                   {unreadCount > 0 && (
-                    <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+                    <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       {unreadCount}
                     </div>
                   )}
@@ -148,7 +148,7 @@ export default function Messages() {
               )
             })
           ) : (
-            <div className="p-8 text-center text-gray-500 text-sm">
+            <div className="p-8 text-center text-neutral-500 text-sm">
               No team members found.
             </div>
           )}
@@ -160,17 +160,17 @@ export default function Messages() {
         {selectedUser ? (
           <>
             {/* Chat Header */}
-            <div className="h-16 border-b border-[#2B2D31] bg-[#1E1F21] flex items-center justify-between px-6 flex-shrink-0">
+            <div className="h-16 border-b border-raised bg-card flex items-center justify-between px-6 flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold text-white">
+                <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center text-sm font-bold text-white">
                   {selectedUser.avatar}
                 </div>
                 <div>
                   <h3 className="font-bold text-white">{selectedUser.name}</h3>
-                  <p className="text-xs text-gray-400 capitalize">{selectedUser.role || 'Member'}</p>
+                  <p className="text-xs text-neutral-400 capitalize">{selectedUser.role || 'Member'}</p>
                 </div>
               </div>
-              <button className="text-gray-400 hover:text-white transition-colors">
+              <button className="text-neutral-400 hover:text-white transition-colors">
                 <Info size={20} />
               </button>
             </div>
@@ -178,7 +178,7 @@ export default function Messages() {
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
               {isLoadingHistory ? (
-                <div className="h-full flex items-center justify-center text-purple-500">
+                <div className="h-full flex items-center justify-center text-accent-500">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current"></div>
                 </div>
               ) : realtimeMessages.length > 0 ? (
@@ -187,19 +187,19 @@ export default function Messages() {
                   return (
                     <div key={msg._id || msg.id || index} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                       <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl ${isMine
-                        ? 'bg-purple-600 text-white rounded-tr-sm'
-                        : 'bg-[#1E1F21] border border-[#2B2D31] text-gray-200 rounded-tl-sm'
+                        ? 'bg-accent-600 text-white rounded-tr-sm'
+                        : 'bg-card border border-raised text-neutral-200 rounded-tl-sm'
                         }`}>
                         <p className="text-sm break-words">{msg.text}</p>
                       </div>
-                      <span className="text-[10px] text-gray-500 mt-1 px-1">
+                      <span className="text-[10px] text-neutral-500 mt-1 px-1">
                         {formatTime(msg.createdAt)}
                       </span>
                     </div>
                   )
                 })
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-gray-500">
+                <div className="h-full flex flex-col items-center justify-center text-neutral-500">
                   <MessageSquare size={48} className="opacity-20 mb-4" />
                   <p className="text-sm">Start a conversation with {selectedUser.name}</p>
                 </div>
@@ -208,19 +208,19 @@ export default function Messages() {
             </div>
 
             {/* Message Input */}
-            <div className="p-4 bg-[#1E1F21] border-t border-[#2B2D31]">
+            <div className="p-4 bg-card border-t border-raised">
               <form onSubmit={handleSendMessage} className="relative flex items-center">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder={`Message ${selectedUser.name}...`}
-                  className="w-full bg-[#111] border border-[#3E4045] rounded-xl pl-4 pr-12 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+                  className="w-full bg-base border border-edge rounded-xl pl-4 pr-12 py-3 text-sm text-white focus:outline-none focus:border-accent-500 transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={!newMessage.trim()}
-                  className="absolute right-2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 disabled:opacity-50 disabled:hover:bg-purple-600 transition-colors"
+                  className="absolute right-2 p-2 bg-accent-600 text-white rounded-lg hover:bg-accent-500 disabled:opacity-50 disabled:hover:bg-accent-600 transition-colors"
                 >
                   <Send size={16} />
                 </button>
@@ -228,9 +228,9 @@ export default function Messages() {
             </div>
           </>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-gray-500">
+          <div className="h-full flex flex-col items-center justify-center text-neutral-500">
             <MessageSquare size={64} className="opacity-10 mb-6" />
-            <h2 className="text-xl font-bold text-gray-300 mb-2">Your Messages</h2>
+            <h2 className="text-xl font-bold text-neutral-300 mb-2">Your Messages</h2>
             <p className="text-sm">Select a team member to start chatting.</p>
           </div>
         )}

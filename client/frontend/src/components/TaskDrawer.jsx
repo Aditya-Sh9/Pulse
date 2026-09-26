@@ -10,8 +10,8 @@ import {
 
 const PRIORITIES = {
   High: { color: 'text-red-400 bg-red-400/10 border-red-400/20' },
-  Normal: { color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
-  Low: { color: 'text-slate-400 bg-slate-400/10 border-slate-400/20' }
+  Normal: { color: 'text-neutral-300 bg-neutral-500/10 border-neutral-500/25' },
+  Low: { color: 'text-neutral-400 bg-neutral-400/10 border-neutral-400/20' }
 }
 
 function TaskDescriptionEditor({ initialDescription, onSave }) {
@@ -23,7 +23,7 @@ function TaskDescriptionEditor({ initialDescription, onSave }) {
       onChange={(e) => setDescription(e.target.value)}
       onBlur={() => onSave(description)}
       placeholder="Add more details to this task..."
-      className="w-full min-h-[120px] bg-[#1E1F21] border border-[#2B2D31] rounded-xl p-4 text-sm text-white focus:outline-none focus:border-purple-500 resize-y transition-colors placeholder-slate-600"
+      className="w-full min-h-[120px] bg-card border border-raised rounded-xl p-4 text-sm text-white focus:outline-none focus:border-accent-500 resize-y transition-colors placeholder-neutral-600"
     />
   )
 }
@@ -106,16 +106,16 @@ export default function TaskDrawer() {
       />
 
       {/* Drawer */}
-      <div className="relative w-full max-w-4xl bg-[#0F1117] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-[#2B2D31]">
+      <div className="relative w-full max-w-4xl bg-base h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-raised">
 
         {/* --- HEADER --- */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2B2D31] bg-[#18191B]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-raised bg-panel">
           <div className="flex items-center gap-3">
             <button
               onClick={() => handleUpdate('status', activeTask.status === 'COMPLETE' ? 'TO DO' : 'COMPLETE')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-bold transition-all border ${activeTask.status === 'COMPLETE'
                   ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20'
-                  : 'bg-[#2B2D31] text-slate-300 border-[#3E4045] hover:bg-[#3E4045]'
+                  : 'bg-raised text-neutral-300 border-edge hover:bg-edge'
                 }`}
             >
               {activeTask.status === 'COMPLETE' ? <CheckCircle2 size={16} /> : <Circle size={16} />}
@@ -127,21 +127,21 @@ export default function TaskDrawer() {
               <>
                 <button
                   onClick={() => handleUpdate('isArchived', !activeTask.isArchived)}
-                  className={`p-2 rounded-lg transition-colors ${activeTask.isArchived ? 'text-purple-400 bg-purple-400/10 hover:bg-purple-400/20' : 'text-slate-500 hover:text-purple-400 hover:bg-purple-400/10'}`}
+                  className={`p-2 rounded-lg transition-colors ${activeTask.isArchived ? 'text-accent-400 bg-accent-400/10 hover:bg-accent-400/20' : 'text-neutral-500 hover:text-accent-400 hover:bg-accent-400/10'}`}
                   title={activeTask.isArchived ? "Unarchive Task" : "Archive Task"}
                 >
                   <Archive size={18} />
                 </button>
                 <button
                   onClick={() => deleteTask(activeTask.id)}
-                  className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                  className="p-2 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                   title="Delete Task"
                 >
                   <Trash2 size={18} />
                 </button>
               </>
             )}
-            <button onClick={closeTaskDrawer} className="p-2 text-slate-500 hover:text-white hover:bg-[#2B2D31] rounded-lg transition-colors">
+            <button onClick={closeTaskDrawer} className="p-2 text-neutral-500 hover:text-white hover:bg-raised rounded-lg transition-colors">
               <X size={20} />
             </button>
           </div>
@@ -157,7 +157,7 @@ export default function TaskDrawer() {
                 type="text"
                 value={activeTask.title || ''}
                 onChange={(e) => updateTask(activeTask.id, { title: e.target.value })}
-                className="w-full bg-transparent text-3xl font-black text-white focus:outline-none placeholder-slate-600"
+                className="w-full bg-transparent text-3xl font-bold text-white focus:outline-none placeholder-neutral-600"
                 placeholder="Task Title"
               />
             </div>
@@ -167,71 +167,71 @@ export default function TaskDrawer() {
 
               {/* Assignee */}
               <div className="flex items-center gap-4">
-                <div className="w-24 text-sm text-slate-500 font-medium flex items-center gap-2">
+                <div className="w-24 text-sm text-neutral-500 font-medium flex items-center gap-2">
                   <User size={16} /> Assignee
                 </div>
                 <select
                   value={activeTask.assigneeId || ''}
                   onChange={(e) => handleUpdate('assigneeId', e.target.value)}
-                  className="bg-transparent text-sm text-white focus:outline-none cursor-pointer hover:bg-[#2B2D31] px-2 py-1 rounded transition-colors"
+                  className="bg-transparent text-sm text-white focus:outline-none cursor-pointer hover:bg-raised px-2 py-1 rounded transition-colors"
                 >
-                  <option value="" className="bg-[#1E1F21]">Unassigned</option>
+                  <option value="" className="bg-card">Unassigned</option>
                   {(userRole === 'admin' ? members : members.filter(m => m.id === currentUser?.uid)).map(m => (
-                    <option key={m.id} value={m.id} className="bg-[#1E1F21]">{m.name || m.email}</option>
+                    <option key={m.id} value={m.id} className="bg-card">{m.name || m.email}</option>
                   ))}
                 </select>
               </div>
 
               {/* Priority */}
               <div className="flex items-center gap-4">
-                <div className="w-24 text-sm text-slate-500 font-medium flex items-center gap-2">
+                <div className="w-24 text-sm text-neutral-500 font-medium flex items-center gap-2">
                   <Flag size={16} /> Priority
                 </div>
                 <select
                   value={activeTask.priority || 'Normal'}
                   onChange={(e) => handleUpdate('priority', e.target.value)}
-                  className={`bg-transparent text-sm focus:outline-none cursor-pointer hover:bg-[#2B2D31] px-2 py-1 rounded transition-colors ${PRIORITIES[activeTask.priority || 'Normal']?.color.split(' ')[0]}`}
+                  className={`bg-transparent text-sm focus:outline-none cursor-pointer hover:bg-raised px-2 py-1 rounded transition-colors ${PRIORITIES[activeTask.priority || 'Normal']?.color.split(' ')[0]}`}
                 >
-                  <option value="High" className="bg-[#1E1F21] text-red-400">High</option>
-                  <option value="Normal" className="bg-[#1E1F21] text-blue-400">Normal</option>
-                  <option value="Low" className="bg-[#1E1F21] text-slate-400">Low</option>
+                  <option value="High" className="bg-card text-red-400">High</option>
+                  <option value="Normal" className="bg-card text-neutral-300">Normal</option>
+                  <option value="Low" className="bg-card text-neutral-400">Low</option>
                 </select>
               </div>
 
               {/* Due Date */}
               <div className="flex items-center gap-4">
-                <div className="w-24 text-sm text-slate-500 font-medium flex items-center gap-2">
+                <div className="w-24 text-sm text-neutral-500 font-medium flex items-center gap-2">
                   <Calendar size={16} /> Due Date
                 </div>
                 <input
                   type="date"
                   value={activeTask.dueDate || ''}
                   onChange={(e) => handleUpdate('dueDate', e.target.value)}
-                  className="bg-transparent text-sm text-white focus:outline-none hover:bg-[#2B2D31] px-2 py-1 rounded transition-colors [color-scheme:dark]"
+                  className="bg-transparent text-sm text-white focus:outline-none hover:bg-raised px-2 py-1 rounded transition-colors [color-scheme:dark]"
                 />
               </div>
 
               {/* Status */}
               <div className="flex items-center gap-4">
-                <div className="w-24 text-sm text-slate-500 font-medium flex items-center gap-2">
+                <div className="w-24 text-sm text-neutral-500 font-medium flex items-center gap-2">
                   <Clock size={16} /> Status
                 </div>
                 <select
                   value={activeTask.status || 'TO DO'}
                   onChange={(e) => handleUpdate('status', e.target.value)}
-                  className="bg-transparent text-sm text-white focus:outline-none cursor-pointer hover:bg-[#2B2D31] px-2 py-1 rounded transition-colors"
+                  className="bg-transparent text-sm text-white focus:outline-none cursor-pointer hover:bg-raised px-2 py-1 rounded transition-colors"
                 >
-                  <option value="TO DO" className="bg-[#1E1F21]">TO DO</option>
-                  <option value="IN PROGRESS" className="bg-[#1E1F21]">IN PROGRESS</option>
-                  <option value="COMPLETE" className="bg-[#1E1F21]">COMPLETE</option>
+                  <option value="TO DO" className="bg-card">TO DO</option>
+                  <option value="IN PROGRESS" className="bg-card">IN PROGRESS</option>
+                  <option value="COMPLETE" className="bg-card">COMPLETE</option>
                 </select>
               </div>
             </div>
 
             {/* Description */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-white uppercase tracking-wider">
-                <AlignLeft size={16} className="text-slate-500" /> Description
+              <div className="flex items-center gap-2 text-sm font-semibold text-neutral-100">
+                <AlignLeft size={16} className="text-neutral-500" /> Description
               </div>
               <TaskDescriptionEditor
                 key={activeTask.id}
@@ -242,8 +242,8 @@ export default function TaskDrawer() {
 
             {/* Subtasks */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-bold text-white uppercase tracking-wider">
-                <CheckSquare size={16} className="text-slate-500" /> Subtasks
+              <div className="flex items-center gap-2 text-sm font-semibold text-neutral-100">
+                <CheckSquare size={16} className="text-neutral-500" /> Subtasks
               </div>
 
               <div className="space-y-2">
@@ -251,7 +251,7 @@ export default function TaskDrawer() {
                   <div key={st.id} className="flex items-center gap-3 group">
                     <button
                       onClick={() => toggleSubtask(activeTask.id, st.id, activeTask.subtasks)}
-                      className={`flex-shrink-0 transition-colors ${st.completed ? 'text-green-500' : 'text-slate-500 hover:text-white'}`}
+                      className={`flex-shrink-0 transition-colors ${st.completed ? 'text-green-500' : 'text-neutral-500 hover:text-white'}`}
                     >
                       {st.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                     </button>
@@ -266,10 +266,10 @@ export default function TaskDrawer() {
                           if (e.key === 'Enter') handleEditSubtaskSubmit(st.id)
                           if (e.key === 'Escape') setEditingSubtaskId(null)
                         }}
-                        className="flex-1 bg-[#1E1F21] text-sm text-white px-2 py-1 rounded border border-purple-500 focus:outline-none"
+                        className="flex-1 bg-card text-sm text-white px-2 py-1 rounded border border-accent-500 focus:outline-none"
                       />
                     ) : (
-                      <span className={`text-sm flex-1 ${st.completed ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                      <span className={`text-sm flex-1 ${st.completed ? 'text-neutral-500 line-through' : 'text-neutral-300'}`}>
                         {st.title}
                       </span>
                     )}
@@ -280,14 +280,14 @@ export default function TaskDrawer() {
                           setEditingSubtaskId(st.id);
                           setEditingSubtaskTitle(st.title);
                         }}
-                        className="p-1.5 text-slate-500 hover:text-purple-400 hover:bg-purple-500/10 rounded transition-colors"
+                        className="p-1.5 text-neutral-500 hover:text-accent-400 hover:bg-accent-500/10 rounded transition-colors"
                         title="Edit subtask"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => deleteSubtask(activeTask.id, st.id, activeTask.subtasks)}
-                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                        className="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                         title="Delete subtask"
                       >
                         <Trash2 size={14} />
@@ -299,7 +299,7 @@ export default function TaskDrawer() {
 
               {/* Add Subtask Input */}
               <div className="flex items-center gap-3">
-                <Plus size={18} className="text-slate-500 flex-shrink-0" />
+                <Plus size={18} className="text-neutral-500 flex-shrink-0" />
                 <input
                   value={newSubtask}
                   onChange={(e) => setNewSubtask(e.target.value)}
@@ -310,7 +310,7 @@ export default function TaskDrawer() {
                     }
                   }}
                   placeholder="Add a subtask..."
-                  className="flex-1 bg-transparent text-sm text-white placeholder-slate-600 focus:outline-none"
+                  className="flex-1 bg-transparent text-sm text-white placeholder-neutral-600 focus:outline-none"
                 />
               </div>
             </div>
@@ -318,19 +318,19 @@ export default function TaskDrawer() {
           </div>
 
           {/* --- RIGHT COLUMN: ACTIVITY --- */}
-          <div className="w-80 bg-[#18191B] border-l border-[#2B2D31] flex flex-col">
+          <div className="w-80 bg-panel border-l border-raised flex flex-col">
 
             {/* Tabs: Comments & Activity */}
-            <div className="flex items-center gap-6 px-6 pt-6 border-b border-[#2B2D31]">
+            <div className="flex items-center gap-6 px-6 pt-6 border-b border-raised">
               <button
                 onClick={() => setActiveTab('comments')}
-                className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'comments' ? 'border-purple-500 text-purple-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'comments' ? 'border-accent-500 text-accent-400' : 'border-transparent text-neutral-500 hover:text-neutral-300'}`}
               >
                 Comments ({comments.length})
               </button>
               <button
                 onClick={() => setActiveTab('activity')}
-                className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'activity' ? 'border-purple-500 text-purple-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'activity' ? 'border-accent-500 text-accent-400' : 'border-transparent text-neutral-500 hover:text-neutral-300'}`}
               >
                 Activity
               </button>
@@ -341,17 +341,17 @@ export default function TaskDrawer() {
                 <>
                   {comments.map(comment => (
                     <div key={comment.id} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                         {comment.userAvatar}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-bold text-white">{comment.userName}</span>
-                          <span className="text-[10px] text-slate-500">
+                          <span className="text-[10px] text-neutral-500">
                             {comment.createdAt ? new Date(comment.createdAt.toDate()).toLocaleString() : 'Just now'}
                           </span>
                         </div>
-                        <div className="text-sm text-slate-300 bg-[#1E1F21] border border-[#2B2D31] p-3 rounded-tr-xl rounded-b-xl leading-relaxed inline-block">
+                        <div className="text-sm text-neutral-300 bg-card border border-raised p-3 rounded-tr-xl rounded-b-xl leading-relaxed inline-block">
                           {comment.text}
                         </div>
                       </div>
@@ -363,21 +363,21 @@ export default function TaskDrawer() {
                 <div className="space-y-4">
                   {activities.map(activity => (
                     <div key={activity.id} className="flex gap-3 text-sm">
-                      <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5">
+                      <div className="w-6 h-6 rounded-full bg-neutral-700 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5">
                         {activity.userAvatar}
                       </div>
                       <div>
-                        <p className="text-slate-300">
+                        <p className="text-neutral-300">
                           <span className="font-bold text-white">{activity.userName}</span> {activity.action}
                         </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
+                        <p className="text-[10px] text-neutral-500 mt-0.5">
                           {activity.createdAt ? new Date(activity.createdAt.toDate()).toLocaleString() : 'Just now'}
                         </p>
                       </div>
                     </div>
                   ))}
                   {activities.length === 0 && (
-                    <div className="text-center text-slate-500 text-sm py-4">No activity yet.</div>
+                    <div className="text-center text-neutral-500 text-sm py-4">No activity yet.</div>
                   )}
                 </div>
               )}
@@ -386,7 +386,7 @@ export default function TaskDrawer() {
             {/* Comment Input */}
             {activeTab === 'comments' && (
               <form onSubmit={handleSendComment} className="flex items-center gap-3 p-6 pt-0">
-                <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-xs font-bold text-white">
+                <div className="w-8 h-8 rounded-full bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 flex items-center justify-center text-xs font-bold text-accent-200">
                   {currentUser?.displayName ? currentUser.displayName[0].toUpperCase() : 'U'}
                 </div>
                 <div className="flex-1 relative">
@@ -394,12 +394,12 @@ export default function TaskDrawer() {
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Write a comment..."
-                    className="w-full bg-[#1E1F21] border border-[#2B2D31] rounded-full pl-4 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+                    className="w-full bg-card border border-raised rounded-full pl-4 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-accent-500 transition-colors"
                   />
                   <button
                     type="submit"
                     disabled={!newComment.trim()}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-purple-600 rounded-full text-white hover:bg-purple-500 disabled:opacity-50 transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-accent-600 rounded-full text-white hover:bg-accent-500 disabled:opacity-50 transition-colors"
                   >
                     <Send size={14} />
                   </button>
