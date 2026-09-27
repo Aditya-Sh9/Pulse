@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
-/* Landing page tokens (flat: ink on warm paper, one teal accent, orange reserved for the live pulse) */
+/* Landing page tokens (flat: navy ink on cool mist, one electric-indigo accent, rose reserved for the live pulse) */
 @theme {
   --font-display: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-paper: #F5F4EF;
-  --color-paper-2: #ECEAE3;
-  --color-ink: #111412;
-  --color-ink-2: #3F4541;
-  --color-ink-3: #5F6561;
-  --color-rule: #D9D6CC;
-  --color-signal: #0F766E;
-  --color-signal-strong: #115E59;
-  --color-signal-tint: #DCEDE9;
-  --color-pulse: #C2410C;
-  --color-app: #111311;
-  --color-app-2: #1A1D1A;
+  --color-paper: #F4F6FB;
+  --color-paper-2: #E9EDF6;
+  --color-ink: #0C1222;
+  --color-ink-2: #394056;
+  --color-ink-3: #5B6378;
+  --color-rule: #D6DCEA;
+  --color-signal: #4F46E5;
+  --color-signal-strong: #3730A3;
+  --color-signal-tint: #E4E3FC;
+  --color-pulse: #E11D48;
+  --color-app: #0E1324;
+  --color-app-2: #171D33;
 
   /* ---- App (dark) surfaces: warm neutral, faint green undertone ---- */
   --color-base: #0C0D0C;

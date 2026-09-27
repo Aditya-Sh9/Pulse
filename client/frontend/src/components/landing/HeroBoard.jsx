@@ -166,7 +166,7 @@ export default function HeroBoard() {
                     data-flip-id={id}
                     className="relative rounded-lg border border-white/5 bg-app-2 p-2.5 sm:p-3"
                   >
-                    <span data-flash className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-teal-300/60 opacity-0" />
+                    <span data-flash className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-indigo-300/60 opacity-0" />
                     <p className={`text-[11px] leading-snug sm:text-[13px] ${col.key === 'done' ? 'text-slate-500 line-through decoration-slate-600' : 'text-slate-100'}`}>
                       {cards[id].title}
                     </p>
@@ -194,7 +194,7 @@ export default function HeroBoard() {
         {/* Teammate cursor */}
         <div ref={cursor} className="pointer-events-none invisible absolute left-0 top-0 z-10 opacity-0">
           <svg width="16" height="16" viewBox="0 0 16 16" className="-translate-x-0.5 -translate-y-0.5">
-            <path d="M1 1l5.5 13 1.8-5.2L13.5 7z" fill="#F5F4EF" stroke="#111412" strokeWidth="1" />
+            <path d="M1 1l5.5 13 1.8-5.2L13.5 7z" fill="#F4F6FB" stroke="#0C1222" strokeWidth="1" />
           </svg>
           <span data-name className="ml-3 inline-block rounded bg-pulse px-1.5 py-0.5 text-[10px] font-semibold text-white">Riya</span>
         </div>
