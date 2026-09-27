@@ -8,8 +8,10 @@ import HeroBoard from '../components/landing/HeroBoard'
 import ViewsShowcase from '../components/landing/ViewsShowcase'
 import PulseMark from '../components/landing/PulseMark'
 import AppLink from '../components/landing/AppLink'
+import HomeLink from '../components/landing/HomeLink'
 import { workspacePages, projectViews, adminPages, sections, REPO_URL } from '../components/landing/siteMap'
 import { useAuth } from '../context/AuthContext'
+import useSmoothScroll from '../hooks/useSmoothScroll'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
@@ -87,6 +89,7 @@ function PageCard({ page, admin }) {
 export default function Home() {
   const { currentUser } = useAuth()
   const root = useRef(null)
+  useSmoothScroll()
 
   // Deep links like /#pages: the section only exists after render, so jump to it now
   useEffect(() => {
@@ -402,7 +405,9 @@ export default function Home() {
       <footer className="border-t border-rule">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-5 lg:px-8">
           <div className="lg:col-span-2">
-            <PulseMark />
+            <HomeLink aria-label="Back to top" className="inline-flex rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal">
+              <PulseMark />
+            </HomeLink>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-ink-3">
               A real-time task workspace for small teams. Built by Aditya Sharma at Lovely Professional University.
             </p>

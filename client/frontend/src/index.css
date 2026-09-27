@@ -164,10 +164,10 @@ html:not(:has(.landing)) { color-scheme: dark; }
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
-/* Anchor jumps on the landing page glide unless the user asked for less motion */
-@media (prefers-reduced-motion: no-preference) {
-  html:has(.landing) { scroll-behavior: smooth; }
-}
+/* Landing scroll is eased by Lenis (useSmoothScroll); native smooth scrolling would fight it */
+html.lenis { scroll-behavior: auto; }
+/* Anchor targets take focus for keyboard users, but a section doesn't need a ring */
+.landing [tabindex="-1"]:focus-visible { outline: none; }
 /* Sections carry their own top padding; pull anchors up so headings land just under the nav */
 .landing section[id] { scroll-margin-top: -2rem; }
 

@@ -6,6 +6,7 @@ import { ArrowRight, Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import PulseMark from './landing/PulseMark'
 import AppLink from './landing/AppLink'
+import HomeLink from './landing/HomeLink'
 import { sections, REPO_URL } from './landing/siteMap'
 
 gsap.registerPlugin(useGSAP)
@@ -72,9 +73,9 @@ export default function Navbar() {
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/" aria-label="Pulse home" className={`rounded-md ${ring}`}>
+        <HomeLink aria-label="Pulse home" onClick={close} className={`rounded-md ${ring}`}>
           <PulseMark />
-        </Link>
+        </HomeLink>
 
         <nav aria-label="Primary" className="hidden md:block">
           <ul className="flex items-center gap-1">
