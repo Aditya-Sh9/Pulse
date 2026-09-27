@@ -99,7 +99,7 @@ export function AuthLayout() {
             </ul>
           </div>
 
-          <p data-brand-item className="text-xs text-neutral-500">Built at Lovely Professional University · ISC License</p>
+          <p data-brand-item className="text-xs text-neutral-500">ISC License</p>
         </aside>
 
         {/* Form side */}

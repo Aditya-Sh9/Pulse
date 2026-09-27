@@ -409,7 +409,7 @@ export default function Home() {
               <PulseMark />
             </HomeLink>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-ink-3">
-              A real-time task workspace for small teams. Built by Aditya Sharma at Lovely Professional University.
+              A real-time task workspace for small teams. Built by Aditya Sharma.
             </p>
           </div>
 

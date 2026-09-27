@@ -4,8 +4,7 @@
 
 **Prepared by:** Aditya Sharma  
 **Date:** April 24, 2026  
-**College:** Lovely Professional University (LPU)  
-**Subject / Course:** Professional Enhancement Program (PEP) / Project Report
+
 
 </div>
 
