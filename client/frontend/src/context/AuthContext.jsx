@@ -38,9 +38,13 @@ const AUTH_ERRORS = {
   'auth/internal-error': 'The email service had a temporary problem. Try again in a moment.'
 }
 
+// The seeded admin account uses a placeholder address with no inbox, so it is exempt
+const VERIFICATION_EXEMPT_EMAILS = ['admin@gmail.com']
+
 // Email/password accounts must confirm their address; Google accounts arrive verified
 export const needsEmailVerification = (user) =>
-  !!user && !user.emailVerified && user.providerData.some(p => p.providerId === 'password')
+  !!user && !user.emailVerified && !VERIFICATION_EXEMPT_EMAILS.includes(user.email) &&
+  user.providerData.some(p => p.providerId === 'password')
 
 export const friendlyAuthError = (err, fallback = 'Something went wrong. Please try again.') =>
   AUTH_ERRORS[err?.code] || fallback
