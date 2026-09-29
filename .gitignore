@@ -28,3 +28,6 @@ dist-ssr
 .env.*
 !.env.example
 backend/config/serviceAccountKey.json
+
+# Local project report (not published)
+Pulse_Project_Report.md
