@@ -1,13 +1,32 @@
-import React, { useRef } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import React, { useRef, useEffect, Suspense } from 'react'
+import { Outlet, useLocation, useSearchParams } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import Sidebar from '../components/Sidebar'
 import Topbar from '../components/Topbar'
-import TaskDrawer from '../components/TaskDrawer' // Import the Drawer
-import { ProjectProvider } from '../context/ProjectContext' // Import the Provider
+import TaskDrawer from '../components/TaskDrawer'
+import PulseLoader from '../components/PulseLoader'
+import { ProjectProvider, useProject } from '../context/ProjectContext'
 
 gsap.registerPlugin(useGSAP)
+
+// Opens the task drawer for shared links like /dashboard/list/:projectId?task=<id>
+function TaskDeepLink() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { tasks, openTaskDrawer } = useProject()
+  const taskId = searchParams.get('task')
+
+  useEffect(() => {
+    if (!taskId || tasks.length === 0) return
+    const task = tasks.find(t => t.id === taskId)
+    if (task) openTaskDrawer(task)
+    const next = new URLSearchParams(searchParams)
+    next.delete('task')
+    setSearchParams(next, { replace: true })
+  }, [taskId, tasks, openTaskDrawer, searchParams, setSearchParams])
+
+  return null
+}
 
 export default function Dashboard() {
   const { pathname } = useLocation()
@@ -30,9 +49,9 @@ export default function Dashboard() {
   }, { dependencies: [pathname], scope: content, revertOnUpdate: true })
 
   return (
-    // 1. Wrap the entire Dashboard in the ProjectProvider
-    // This ensures Sidebar, TaskDrawer, and all pages (Outlet) can access data
+    // Sidebar, TaskDrawer, and all pages (Outlet) share the workspace data
     <ProjectProvider>
+      <TaskDeepLink />
       <div className="flex w-full h-dvh bg-base text-neutral-200 overflow-hidden">
 
         <Sidebar />
@@ -42,11 +61,13 @@ export default function Dashboard() {
 
           {/* Scrollable Content Area */}
           <main ref={content} className="flex-1 overflow-auto relative z-0 custom-scrollbar">
-            <Outlet />
+            {/* Keeps the sidebar/topbar on screen while a lazily loaded page arrives */}
+            <Suspense fallback={<PulseLoader label="Loading…" inline />}>
+              <Outlet />
+            </Suspense>
           </main>
 
-          {/* 2. Add the TaskDrawer here */}
-          {/* It uses 'fixed' positioning, so it will slide over everything */}
+          {/* Fixed-position drawer that slides over everything */}
           <TaskDrawer />
 
         </div>

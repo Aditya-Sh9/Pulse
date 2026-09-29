@@ -8,22 +8,15 @@ const verifyToken = async (req, res, next) => {
     return res.status(401).json({ message: 'No token provided. Unauthorized.' });
   }
 
-  // Extract the token string
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.slice('Bearer '.length).trim();
 
   try {
-    // Verify the token using Firebase Admin SDK
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    
-    // Attach the decoded user information to the request object
-    // This allows subsequent routes to know exactly who made the request
-    req.user = decodedToken;
-    
-    // Move to the next middleware or route handler
+    // checkRevoked rejects tokens of removed/disabled accounts instead of honouring them until expiry
+    req.user = await admin.auth().verifyIdToken(token, true);
     next();
   } catch (error) {
-    console.error('Error verifying auth token:', error);
-    return res.status(403).json({ message: 'Invalid or expired token. Unauthorized.' });
+    console.error('Auth token rejected:', error.code || error.message);
+    return res.status(401).json({ message: 'Invalid or expired token. Unauthorized.' });
   }
 };
 

@@ -1,13 +1,11 @@
-import React, { useState } from 'react'
-import { NavLink, useParams, useNavigate } from 'react-router-dom'
+import React, { useState, useCallback } from 'react'
+import { useParams } from 'react-router-dom'
 import { useProject } from '../context/ProjectContext'
-import { useAuth } from '../context/AuthContext'
-import {
-  List, Calendar, Kanban, Table, Plus, MoreHorizontal,
-  LayoutGrid, ChevronDown, Circle, CheckCircle2, Clock, Flag,
-  UserCircle, Pencil, Copy as DuplicateIcon, Bell, Archive, Trash2, Link, ExternalLink, Copy, X
-} from 'lucide-react'
+import { Plus, MoreHorizontal, Clock, UserCircle, Archive } from 'lucide-react'
 import CreateTaskForm from '../components/CreateTaskForm'
+import ProjectViewShell from '../components/ProjectViewShell'
+import TaskActionsMenu from '../components/TaskActionsMenu'
+import { formatDue, isOverdue } from '../utils/dates'
 
 // --- CONSTANTS ---
 const COLUMNS = [
@@ -22,174 +20,66 @@ const PRIORITIES = {
   Low: { color: 'text-neutral-400 bg-neutral-400/10 border-neutral-400/20' }
 }
 
-// Navigation Link Component
-const TabLink = ({ to, icon: Icon, label }) => (
-  <NavLink
-    to={to}
-    className={({ isActive }) => `flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-accent-500 text-white' : 'border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-raised rounded-t-md'}`}>
-    <Icon size={14} /> {label}
-  </NavLink>
-)
-
-// Shared Helper Components
-const MenuItem = ({ icon: Icon, label, onClick, danger }) => (
-  <button onClick={(e) => { e.stopPropagation(); onClick && onClick() }} className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-edge transition-colors ${danger ? 'text-red-400 hover:text-red-300' : 'text-neutral-300'}`}>
-    <Icon size={14} className={danger ? "text-red-400" : "text-neutral-500"} /> {label}
-  </button>
-)
-
 export default function BoardView() {
   const { projectId } = useParams()
-  const navigate = useNavigate()
-  const { tasks, addTask, updateTask, deleteTask, moveTask, members, getMemberById, projects, openTaskDrawer, showToast } = useProject()
-  const { userRole } = useAuth()
+  const { tasks, addTask, moveTask, getMemberById, openTaskDrawer } = useProject()
 
   // UI States
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false)
   const [draggedTaskId, setDraggedTaskId] = useState(null)
+  const [dragOverColumn, setDragOverColumn] = useState(null)
   const [activeMenuId, setActiveMenuId] = useState(null)
-  const [activeColMenuId, setActiveColMenuId] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [defaultStatus, setDefaultStatus] = useState('TO DO')
   const [showArchived, setShowArchived] = useState(false)
 
-  const menuRef = React.useRef(null)
+  const closeMenu = useCallback(() => setActiveMenuId(null), [])
 
-  React.useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setActiveMenuId(null)
-        setActiveColMenuId(null)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
-  // 1. Resolve Project & Tasks (String IDs & Ignore Archived)
-  const currentProject = projects.find(p => String(p.id) === String(projectId))
   const projectTasks = tasks.filter(t => String(t.projectId) === String(projectId) && (showArchived ? t.isArchived : !t.isArchived))
 
   // --- Task Handlers ---
   const handleCreateTask = (taskData) => {
-    addTask({
-      ...taskData,
-      projectId: projectId,
-      status: defaultStatus
-    })
+    addTask({ ...taskData, projectId, status: defaultStatus })
     setShowCreateModal(false)
   }
 
-  const handleDeleteTask = (id) => {
-    deleteTask(id)
-    setActiveMenuId(null)
-  }
-
-  const handleUpdateTask = (id, field, value) => {
-    updateTask(id, { [field]: value })
-    setActiveMenuId(null)
-  }
-
-  const duplicateTask = (task) => {
-    const { id: _id, ...rest } = task
-    addTask({
-      ...rest,
-      title: `${task.title} (Copy)`,
-      projectId: projectId
-    })
-    setActiveMenuId(null)
+  const openCreate = (status) => {
+    setDefaultStatus(status)
+    setShowCreateModal(true)
   }
 
   // --- Drag & Drop Handlers ---
   const handleDragStart = (e, taskId) => {
     setDraggedTaskId(taskId)
-    e.dataTransfer.effectAllowed = "move"
-    // Add a ghost effect if desired
-    e.target.style.opacity = '0.5'
+    e.dataTransfer.effectAllowed = 'move'
+    e.currentTarget.style.opacity = '0.5'
   }
 
   const handleDragEnd = (e) => {
-    e.target.style.opacity = '1'
+    e.currentTarget.style.opacity = '1'
     setDraggedTaskId(null)
-  }
-
-  const handleDragOver = (e) => {
-    e.preventDefault() // Necessary to allow dropping
+    setDragOverColumn(null)
   }
 
   const handleDrop = (e, status) => {
     e.preventDefault()
-    if (draggedTaskId) {
-      moveTask(draggedTaskId, status)
-    }
+    if (draggedTaskId) moveTask(draggedTaskId, status)
+    setDragOverColumn(null)
   }
 
   return (
-    <div className="flex flex-col h-full bg-base text-neutral-200">
-
-      {/* --- Header & Tabs --- */}
-      <div className="bg-card border-b border-raised flex-shrink-0">
-        <div className="px-6 pt-4 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-neutral-400 relative">
-            <span className="bg-edge w-5 h-5 flex items-center justify-center rounded text-[10px]">TS</span>
-            <span>Team Space</span>
-            <span className="text-neutral-600">/</span>
-            <LayoutGrid size={14} />
-            <div
-              className="flex items-center gap-1 cursor-pointer hover:text-white"
-              onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-            >
-              <span className="font-semibold text-white">{currentProject?.name || 'Project'}</span>
-              <ChevronDown size={14} />
-            </div>
-
-            {showProjectDropdown && (
-              <div className="absolute top-full left-32 mt-1 w-48 bg-raised border border-edge rounded-md shadow-xl z-50 py-1">
-                {projects.map(p => (
-                  <div
-                    key={p.id}
-                    className="px-3 py-2 hover:bg-edge text-sm text-neutral-300 cursor-pointer flex items-center gap-2"
-                    onClick={() => {
-                      navigate(`/dashboard/board/${p.id}`);
-                      setShowProjectDropdown(false);
-                    }}
-                  >
-                    <LayoutGrid size={12} /> {p.name}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-2">
-              {members.slice(0, 3).map(m => (
-                <div key={m.id} className="w-6 h-6 rounded-full bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 border border-card flex items-center justify-center text-[9px] text-accent-200">
-                  {m.avatar}
-                </div>
-              ))}
-              <button className="w-6 h-6 rounded-full bg-raised border border-card flex items-center justify-center text-[10px] text-neutral-400 hover:text-white hover:bg-edge">
-                +
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="px-4 flex items-center gap-1 mt-1">
-          <TabLink to={`/dashboard/list/${projectId}`} icon={List} label="List" />
-          <TabLink to={`/dashboard/board/${projectId}`} icon={Kanban} label="Board" />
-          <TabLink to={`/dashboard/calendar/${projectId}`} icon={Calendar} label="Calendar" />
-          <TabLink to={`/dashboard/table/${projectId}`} icon={Table} label="Table" />
-          <button
-            onClick={() => setShowArchived(!showArchived)}
-            className={`flex items-center gap-1 px-3 py-1 ml-auto text-xs font-medium rounded-md transition-colors ${showArchived ? 'bg-accent-500/20 text-accent-400' : 'text-neutral-400 hover:text-white hover:bg-raised'}`}
-          >
-            <Archive size={12} /> {showArchived ? 'Hide Archived' : 'Show Archived'}
-          </button>
-          <button className="flex items-center gap-1 px-2 text-xs font-medium text-neutral-400 hover:text-white">
-            <Plus size={12} /> View
-          </button>
-        </div>
-      </div>
-
+    <ProjectViewShell
+      projectId={projectId}
+      view="board"
+      actions={
+        <button
+          type="button"
+          onClick={() => setShowArchived(!showArchived)}
+          className={`flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md transition-colors ${showArchived ? 'bg-accent-500/20 text-accent-400' : 'text-neutral-400 hover:text-white hover:bg-raised'}`}
+        >
+          <Archive size={12} /> {showArchived ? 'Hide Archived' : 'Show Archived'}
+        </button>
+      }
+    >
       {/* --- Kanban Board --- */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
         <div className="flex h-full gap-6 min-w-[1000px]">
@@ -198,55 +88,50 @@ export default function BoardView() {
             const columnTasks = projectTasks.filter(t => t.status === column.id)
 
             return (
-              <div
+              <section
                 key={column.id}
+                aria-label={`${column.label} column`}
                 className="flex-1 flex flex-col min-w-[300px] h-full"
-                onDragOver={handleDragOver}
+                onDragOver={(e) => { e.preventDefault(); setDragOverColumn(column.id) }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverColumn(null) }}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between mb-4 px-2">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${column.color}`}></span>
-                    <span className="text-sm font-bold text-neutral-300 uppercase tracking-wide">{column.label}</span>
+                    <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wide">{column.label}</h2>
                     <span className="text-xs text-neutral-500 bg-card px-2 py-0.5 rounded-full">{columnTasks.length}</span>
                   </div>
-                  <div className="flex items-center gap-1 relative">
+                  {!showArchived && (
                     <button
-                      onClick={() => { setDefaultStatus(column.id); setShowCreateModal(true); }}
+                      type="button"
+                      aria-label={`Add task to ${column.label}`}
+                      onClick={() => openCreate(column.id)}
                       className="p-1 hover:bg-raised rounded text-neutral-500 hover:text-white transition-colors"
                     >
                       <Plus size={14} />
                     </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setActiveColMenuId(activeColMenuId === column.id ? null : column.id); setActiveMenuId(null); }}
-                      className="p-1 hover:bg-raised rounded text-neutral-500 hover:text-white transition-colors"
-                    >
-                      <MoreHorizontal size={14} />
-                    </button>
-
-                    {activeColMenuId === column.id && (
-                      <div ref={menuRef} className="absolute right-0 top-8 w-48 bg-raised border border-edge rounded-lg shadow-2xl z-50 p-1 flex flex-col">
-                        <MenuItem icon={Plus} label="Add Task" onClick={() => { setDefaultStatus(column.id); setShowCreateModal(true); setActiveColMenuId(null); }} />
-                        <div className="px-2 py-1.5 text-[11px] text-neutral-500">No bulk actions available.</div>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
 
                 {/* Drop Zone */}
-                <div className="flex-1 bg-panel rounded-xl border border-raised/50 p-3 overflow-y-auto space-y-3">
+                <div className={`flex-1 bg-panel rounded-xl border p-3 overflow-y-auto space-y-3 transition-colors ${dragOverColumn === column.id ? 'border-accent-500/50 bg-accent-500/5' : 'border-raised/50'}`}>
                   {columnTasks.map(task => {
                     const assignee = getMemberById(task.assigneeId)
+                    const overdue = task.status !== 'COMPLETE' && isOverdue(task.dueDate)
+                    const doneSubtasks = (task.subtasks || []).filter(s => s.completed).length
 
                     return (
                       <div
                         key={task.id}
                         draggable
+                        tabIndex={0}
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         onDragEnd={handleDragEnd}
                         onClick={() => openTaskDrawer(task)}
-                        className="group bg-card p-4 rounded-lg border border-raised shadow-sm hover:border-accent-500/30 cursor-grab active:cursor-grabbing transition-all duration-200"
+                        onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) openTaskDrawer(task) }}
+                        className="group bg-card p-4 rounded-lg border border-raised shadow-sm hover:border-accent-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/60 cursor-grab active:cursor-grabbing transition-all duration-200"
                       >
                         {/* Tags Row */}
                         <div className="flex justify-between items-start mb-2 relative">
@@ -254,61 +139,57 @@ export default function BoardView() {
                             {task.priority}
                           </div>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === task.id ? null : task.id); setActiveColMenuId(null); }}
-                            className={`p-0.5 rounded transition-colors ${activeMenuId === task.id ? 'opacity-100 text-white bg-edge' : 'opacity-0 group-hover:opacity-100 text-neutral-600 hover:text-white'}`}
+                            type="button"
+                            aria-label="Task actions"
+                            aria-haspopup="menu"
+                            onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === task.id ? null : task.id) }}
+                            className={`p-0.5 rounded transition-colors ${activeMenuId === task.id ? 'opacity-100 text-white bg-edge' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 text-neutral-600 hover:text-white'}`}
                           >
                             <MoreHorizontal size={16} />
                           </button>
 
                           {activeMenuId === task.id && (
-                            <div ref={menuRef} className="absolute right-0 top-6 w-60 bg-raised border border-edge rounded-lg shadow-2xl z-50 p-1.5 flex flex-col gap-1 cursor-default" onClick={e => e.stopPropagation()}>
-                              <div className="grid grid-cols-3 gap-1 mb-1">
-                                <button onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Current view link copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><Link size={12} /> Link</button>
-                                <button onClick={() => { navigator.clipboard.writeText(task.id); showToast('Task ID copied', 'success'); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><Copy size={12} /> ID</button>
-                                <button onClick={() => { openTaskDrawer(task); setActiveMenuId(null); }} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><ExternalLink size={12} /> Open</button>
-                              </div>
-                              <div className="h-px bg-edge my-0.5" />
-                              <MenuItem icon={Pencil} label="Rename" onClick={() => { setActiveMenuId(null); openTaskDrawer(task); }} />
-                              <MenuItem icon={DuplicateIcon} label="Duplicate" onClick={() => duplicateTask(task)} />
-                              <MenuItem icon={Bell} label="Remind me" onClick={() => { setActiveMenuId(null); showToast('Reminders are not configured for this MVP yet.', 'info'); }} />
-                              <MenuItem icon={Archive} label={task.isArchived ? "Unarchive" : "Archive"} onClick={() => handleUpdateTask(task.id, 'isArchived', !task.isArchived)} />
-                              <div className="h-px bg-edge my-0.5" />
-                              <MenuItem icon={Trash2} label="Delete" danger={true} onClick={() => handleDeleteTask(task.id)} />
-                            </div>
+                            <TaskActionsMenu task={task} onClose={closeMenu} className="right-0 top-6" />
                           )}
                         </div>
 
                         {/* Title */}
-                        <h4 className="text-sm font-medium text-neutral-200 mb-3 leading-snug">
+                        <h3 className="text-sm font-medium text-neutral-200 mb-3 leading-snug break-words">
                           {task.title}
-                        </h4>
+                        </h3>
 
                         {/* Footer Row */}
-                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                          <div className="flex items-center gap-3 text-neutral-500 text-xs">
-                            <div className={`flex items-center gap-1 ${task.dueDate ? 'text-neutral-400' : ''}`}>
+                        <div className="flex items-center justify-between pt-3 border-t border-white/5 gap-2">
+                          <div className="flex items-center gap-3 text-neutral-500 text-xs min-w-0">
+                            <div className={`flex items-center gap-1 ${overdue ? 'text-red-400 font-semibold' : task.dueDate ? 'text-neutral-400' : ''}`}>
                               <Clock size={12} />
-                              {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-'}
+                              {formatDue(task.dueDate) || '-'}
                             </div>
+                            {task.subtasks?.length > 0 && (
+                              <span className="tabular-nums">{doneSubtasks}/{task.subtasks.length}</span>
+                            )}
                           </div>
 
-                          {/* Avatar */}
-                          <div>
+                          <div className="flex items-center gap-2">
+                            {/* Keyboard/touch alternative to drag-and-drop */}
+                            <select
+                              aria-label="Move to column"
+                              value={task.status}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => moveTask(task.id, e.target.value)}
+                              className="bg-transparent text-[10px] text-neutral-500 hover:text-neutral-200 focus:text-neutral-200 rounded px-1 py-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-accent-500 cursor-pointer"
+                            >
+                              {COLUMNS.map(c => <option key={c.id} value={c.id} className="bg-card">{c.label}</option>)}
+                            </select>
                             {assignee ? (
                               <div
-                                className={`w-6 h-6 rounded-full bg-raised ring-1 ring-inset ring-edge flex items-center justify-center text-[10px] font-semibold text-neutral-200 flex-shrink-0 ${userRole === 'admin' ? 'cursor-pointer hover:ring-2 hover:ring-ember-400/50' : ''}`}
-                                title={assignee?.name || 'Unassigned'}
-                                onClick={(e) => {
-                                  if (userRole === 'admin') {
-                                    e.stopPropagation()
-                                    setActiveMenuId(activeMenuId === `assignee-${task.id}` ? null : `assignee-${task.id}`)
-                                  }
-                                }}
+                                className="w-6 h-6 rounded-full bg-raised ring-1 ring-inset ring-edge flex items-center justify-center text-[10px] font-semibold text-neutral-200 flex-shrink-0"
+                                title={assignee.name}
                               >
-                                {assignee?.name?.[0]?.toUpperCase() || 'U'}
+                                {assignee.name?.[0]?.toUpperCase() || 'U'}
                               </div>
                             ) : (
-                              <div className="w-6 h-6 rounded-full border border-dashed border-neutral-600 flex items-center justify-center text-neutral-600">
+                              <div title="Unassigned" className="w-6 h-6 rounded-full border border-dashed border-neutral-600 flex items-center justify-center text-neutral-600">
                                 <UserCircle size={14} />
                               </div>
                             )}
@@ -321,22 +202,19 @@ export default function BoardView() {
                   {/* Empty State / Drop Target Hint */}
                   {columnTasks.length === 0 && (
                     <div className="h-24 rounded-lg border-2 border-dashed border-raised flex flex-col items-center justify-center text-neutral-600 text-xs">
-                      <span>Drop tasks here</span>
+                      <span>{showArchived ? 'No archived tasks' : 'Drop tasks here'}</span>
                     </div>
                   )}
                 </div>
-              </div>
+              </section>
             )
           })}
         </div>
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
-          <CreateTaskForm onCreate={handleCreateTask} onCancel={() => setShowCreateModal(false)} members={members} defaultStatus={defaultStatus} />
-        </div>
+        <CreateTaskForm onCreate={handleCreateTask} onCancel={() => setShowCreateModal(false)} defaultStatus={defaultStatus} />
       )}
-    </div>
+    </ProjectViewShell>
   )
 }

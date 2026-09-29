@@ -1,5 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
-import { DataProvider } from './context/DataContext'
+import { lazy, Suspense } from 'react'
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -9,26 +9,23 @@ import { ShieldAlert } from 'lucide-react'
 import { AuthLayout } from './components/auth/AuthShell'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
-import Dashboard from './pages/Dashboard'
 import Home from './pages/Home'
-import Settings from './pages/Settings'
-import Team from './pages/Team'
-import Inbox from './pages/Inbox'
-import Leaderboard from './pages/Leaderboard'
-import ActivityLog from './pages/ActivityLog'
-
-import ListView from './views/ListView'
-import BoardView from './views/BoardView'
-import CalendarView from './views/CalendarView'
-import TableView from './views/TableView'
-
-import DashboardHome from './pages/DashboardHome'
-
-import MyTasks from './pages/MyTasks'
-
-import Messages from './pages/Messages'
-
 import NotFound from './pages/NotFound'
+
+// The workspace is split out of the landing/auth bundle and loaded per route
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const DashboardHome = lazy(() => import('./pages/DashboardHome'))
+const MyTasks = lazy(() => import('./pages/MyTasks'))
+const Inbox = lazy(() => import('./pages/Inbox'))
+const Messages = lazy(() => import('./pages/Messages'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+const Team = lazy(() => import('./pages/Team'))
+const Settings = lazy(() => import('./pages/Settings'))
+const ActivityLog = lazy(() => import('./pages/ActivityLog'))
+const ListView = lazy(() => import('./views/ListView'))
+const BoardView = lazy(() => import('./views/BoardView'))
+const CalendarView = lazy(() => import('./views/CalendarView'))
+const TableView = lazy(() => import('./views/TableView'))
 
 const AdminRoute = ({ children }) => {
   const { userRole, loading } = useAuth()
@@ -60,14 +57,14 @@ function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-          <DataProvider>
+          <Suspense fallback={<PulseLoader label="Loading…" />}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
               </Route>
-
+  
               <Route
                 path="/dashboard"
                 element={
@@ -84,26 +81,14 @@ function App() {
                 <Route path="inbox" element={<Inbox />} />
                 <Route path="messages" element={<Messages />} />
                 <Route path="messages/:userId" element={<Messages />} />
-
+  
                 <Route path="leaderboard" element={<Leaderboard />} />
-
+  
+                {/* Team directory and personal settings are for everyone; admin controls are gated inside */}
+                <Route path="team" element={<Team />} />
+                <Route path="settings" element={<Settings />} />
+  
                 {/* Admin Only Routes */}
-                <Route
-                  path="team"
-                  element={
-                    <AdminRoute>
-                      <Team />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="settings"
-                  element={
-                    <AdminRoute>
-                      <Settings />
-                    </AdminRoute>
-                  }
-                />
                 <Route
                   path="activity"
                   element={
@@ -112,13 +97,13 @@ function App() {
                     </AdminRoute>
                   }
                 />
-
+  
                 <Route index element={<DashboardHome />} />
               </Route>
-
+  
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </DataProvider>
+          </Suspense>
         </AuthProvider>
       </Router>
     </ErrorBoundary>

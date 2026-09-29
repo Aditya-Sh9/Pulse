@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 
-// Import the controller functions
-const { createActivity, getActivities } = require('../controllers/activityController');
+const verifyToken = require('../middleware/authMiddleware');
+const isAdmin = require('../middleware/adminMiddleware');
+const { createActivity, getActivities, getXpActivities } = require('../controllers/activityController');
 
-// Map endpoints to controller functions
-router.post('/', createActivity);
-router.get('/', getActivities);
+router.post('/', verifyToken, createActivity);
+router.get('/xp', verifyToken, getXpActivities);
+router.get('/', verifyToken, isAdmin, getActivities);
 
 module.exports = router;

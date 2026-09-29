@@ -5,8 +5,11 @@ import { useProject } from '../context/ProjectContext'
 import {
   Search, Settings, HelpCircle, Bell, LogOut,
   MessageSquare, UserCircle, Check, BookOpen, Keyboard, ShieldAlert,
-  CheckSquare, LayoutGrid, Folder, User, X
+  CheckSquare, LayoutGrid, Folder, User, X, AlarmClock, LifeBuoy
 } from 'lucide-react'
+import { REPO_URL } from './landing/siteMap'
+import { timeAgo } from '../utils/dates'
+import { openNotification } from '../utils/notifications'
 
 export default function Topbar() {
   const navigate = useNavigate()
@@ -22,7 +25,8 @@ export default function Topbar() {
     markNotificationAsRead,
     markAllNotificationsAsRead,
     openTaskDrawer,
-    showToast
+    showToast,
+    contactAdmins
   } = useProject()
 
   const [searchOpen, setSearchOpen] = useState(false)
@@ -33,6 +37,8 @@ export default function Topbar() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showContact, setShowContact] = useState(false)
+  const [contactText, setContactText] = useState('')
+  const [contactSending, setContactSending] = useState(false)
 
   const searchRef = useRef(null)
   const searchInputRef = useRef(null)
@@ -85,12 +91,20 @@ export default function Topbar() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setSearchOpen(true)
         setTimeout(() => {
           searchInputRef.current?.focus()
         }, 10)
+      }
+      if (e.key === 'Escape') {
+        setSearchOpen(false)
+        setNotificationsOpen(false)
+        setProfileOpen(false)
+        setHelpOpen(false)
+        setShowShortcuts(false)
+        setShowContact(false)
       }
     }
     document.addEventListener('keydown', handleKeyDown)
@@ -128,29 +142,21 @@ export default function Topbar() {
   }
 
   const handleNotificationClick = (notification) => {
-    markNotificationAsRead(notification.id)
+    if (!notification.read) markNotificationAsRead(notification.id)
     setNotificationsOpen(false)
-
-    if (notification.type === 'message') {
-      navigate(`/dashboard/messages/${notification.taskId}`)
-    } else {
-      const task = tasks.find(t => t.id === notification.taskId)
-      if (task) {
-        openTaskDrawer(task)
-      }
-    }
+    openNotification(notification, { navigate, tasks, openTaskDrawer, showToast })
   }
 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return ''
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    const now = new Date()
-    const diff = (now - date) / 1000
-
-    if (diff < 60) return 'Just now'
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-    return date.toLocaleDateString()
+  const handleContactSubmit = async (e) => {
+    e.preventDefault()
+    if (!contactText.trim()) return
+    setContactSending(true)
+    const sent = await contactAdmins(contactText.trim())
+    setContactSending(false)
+    if (sent) {
+      setContactText('')
+      setShowContact(false)
+    }
   }
 
   return (
@@ -164,11 +170,17 @@ export default function Topbar() {
           </div>
           <input
             ref={searchInputRef}
+            type="search"
+            aria-label="Search tasks, projects, spaces and people"
             onClick={() => setSearchOpen(true)}
+            onFocus={() => setSearchOpen(true)}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchResults[0]) handleSearchResultSelect(searchResults[0])
+            }}
             className="w-full bg-base text-neutral-200 text-sm rounded-lg py-2 pl-10 pr-16 focus:outline-none focus:ring-1 focus:ring-accent-500 border border-edge focus:border-accent-500/50 placeholder-neutral-600 transition-all"
-            placeholder="Search tasks..."
+            placeholder="Search tasks, projects, people…"
           />
           <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
             <span className="text-[10px] text-neutral-500 border border-neutral-700 rounded px-1.5 py-0.5 bg-card">Ctrl K</span>
@@ -186,10 +198,11 @@ export default function Topbar() {
                           {groupName}
                         </div>
                         {items.map(item => (
-                          <div
+                          <button
+                            type="button"
                             key={`${item.searchType}-${item.id}`}
                             onClick={() => handleSearchResultSelect(item)}
-                            className="px-4 py-2 hover:bg-raised cursor-pointer flex items-center justify-between group transition-colors"
+                            className="w-full text-left px-4 py-2 hover:bg-raised focus:bg-raised focus:outline-none cursor-pointer flex items-center justify-between group transition-colors"
                           >
                             <div className="flex items-center flex-1 min-w-0 mr-4">
                               <div className="text-neutral-500 mr-3 group-hover:text-accent-400 transition-colors">
@@ -221,7 +234,7 @@ export default function Topbar() {
                                 {item.role}
                               </span>
                             )}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )
@@ -242,6 +255,8 @@ export default function Topbar() {
         <div className="relative" ref={helpRef}>
           <button
             onClick={() => setHelpOpen(!helpOpen)}
+            aria-label="Help and support"
+            aria-expanded={helpOpen}
             className={`p-2 rounded-full transition-colors hidden sm:block ${helpOpen ? 'bg-white/10 text-white' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
           >
             <HelpCircle size={20} />
@@ -253,12 +268,15 @@ export default function Topbar() {
                 <p className="text-sm font-bold text-white">Help & Support</p>
               </div>
               <div className="p-1">
-                <button
-                  onClick={() => { setHelpOpen(false); showToast('Documentation is not configured for this MVP yet.', 'info'); }}
+                <a
+                  href={`${REPO_URL}#readme`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setHelpOpen(false)}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-raised hover:text-white rounded-lg transition-colors"
                 >
                   <BookOpen size={16} /> Documentation
-                </button>
+                </a>
                 <button
                   onClick={() => { setHelpOpen(false); setShowShortcuts(true); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-raised hover:text-white rounded-lg transition-colors"
@@ -281,6 +299,8 @@ export default function Topbar() {
         <div className="relative" ref={notificationsRef}>
           <button
             onClick={() => setNotificationsOpen(!notificationsOpen)}
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            aria-expanded={notificationsOpen}
             className={`relative p-2 rounded-full transition-colors ${notificationsOpen ? 'bg-white/10 text-white' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`}
           >
             <Bell size={20} />
@@ -320,6 +340,14 @@ export default function Topbar() {
                           <div className="w-8 h-8 rounded-full bg-ember-500/20 text-ember-400 flex items-center justify-center border border-ember-500/30">
                             <MessageSquare size={14} />
                           </div>
+                        ) : notif.type === 'reminder' ? (
+                          <div className="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30">
+                            <AlarmClock size={14} />
+                          </div>
+                        ) : notif.type === 'support' ? (
+                          <div className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center border border-red-500/30">
+                            <LifeBuoy size={14} />
+                          </div>
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center border border-green-500/30">
                             <UserCircle size={16} />
@@ -331,7 +359,7 @@ export default function Topbar() {
                           <span className="font-semibold text-white">{notif.senderName}</span> {notif.message}
                         </p>
                         <p className="text-xs text-neutral-500 mt-1.5 flex items-center gap-1">
-                          {formatTime(notif.createdAt)}
+                          {timeAgo(notif.createdAt)}
                         </p>
                       </div>
                       {!notif.read && (
@@ -346,6 +374,12 @@ export default function Topbar() {
                   </div>
                 )}
               </div>
+              <button
+                onClick={() => { setNotificationsOpen(false); navigate('/dashboard/inbox') }}
+                className="w-full px-4 py-2.5 text-xs font-medium text-accent-400 hover:bg-raised border-t border-raised transition-colors"
+              >
+                Open Inbox
+              </button>
             </div>
           )}
         </div>
@@ -353,7 +387,9 @@ export default function Topbar() {
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setProfileOpen(!profileOpen)}
-            className="flex items-center gap-2 outline-none group"
+            aria-label="Account menu"
+            aria-expanded={profileOpen}
+            className="flex items-center gap-2 rounded-full group focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
           >
             <div className="w-8 h-8 bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 rounded-full flex items-center justify-center text-xs font-bold text-accent-200 group-hover:ring-accent-300/50 transition-colors">
               {userInitials}
@@ -399,13 +435,13 @@ export default function Topbar() {
 
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-raised rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 fade-in duration-200">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowShortcuts(false)}>
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="bg-card border border-raised rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 fade-in duration-200">
             <div className="flex justify-between items-center p-6 border-b border-raised">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Keyboard className="text-accent-500" /> Keyboard Shortcuts
               </h2>
-              <button onClick={() => setShowShortcuts(false)} className="text-neutral-400 hover:text-white transition-colors"><X size={20} /></button>
+              <button onClick={() => setShowShortcuts(false)} aria-label="Close" className="text-neutral-400 hover:text-white transition-colors"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-center">
@@ -413,11 +449,11 @@ export default function Topbar() {
                 <span className="bg-base border border-edge px-2 py-1 rounded text-sm text-neutral-400 font-mono">Ctrl + K</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-neutral-300">Create Task</span>
+                <span className="text-neutral-300">Submit the new-task form</span>
                 <span className="bg-base border border-edge px-2 py-1 rounded text-sm text-neutral-400 font-mono">Ctrl + Enter</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-neutral-300">Close Drawer</span>
+                <span className="text-neutral-300">Close drawer, dialog or menu</span>
                 <span className="bg-base border border-edge px-2 py-1 rounded text-sm text-neutral-400 font-mono">Escape</span>
               </div>
             </div>
@@ -435,29 +471,41 @@ export default function Topbar() {
 
       {/* Contact Admin Modal */}
       {showContact && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-raised rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 fade-in duration-200">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowContact(false)}>
+          <form
+            onSubmit={handleContactSubmit}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contact-admin-title"
+            className="bg-card border border-raised rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 fade-in duration-200"
+          >
             <div className="flex justify-between items-center p-6 border-b border-raised">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <h2 id="contact-admin-title" className="text-xl font-bold text-white flex items-center gap-2">
                 <ShieldAlert className="text-red-500" /> Contact Admin
               </h2>
-              <button onClick={() => setShowContact(false)} className="text-neutral-400 hover:text-white transition-colors"><X size={20} /></button>
+              <button type="button" onClick={() => setShowContact(false)} aria-label="Close" className="text-neutral-400 hover:text-white transition-colors"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-neutral-400 text-sm">Need help with permissions, accounts, or unexpected errors? Let us know.</p>
+              <p className="text-neutral-400 text-sm">Need help with permissions, accounts, or unexpected errors? Your note goes to every workspace admin’s inbox.</p>
               <textarea
+                value={contactText}
+                onChange={(e) => setContactText(e.target.value)}
+                maxLength={400}
+                aria-label="Describe your issue"
                 className="w-full bg-base border border-edge rounded-xl p-3 text-white focus:outline-none focus:border-accent-500 resize-none h-32 text-sm placeholder-neutral-600"
                 placeholder="Describe your issue..."
                 autoFocus
               ></textarea>
               <button
-                onClick={() => { setShowContact(false); showToast('Admin contact workflow is not configured for this MVP yet.', 'info'); }}
-                className="w-full bg-accent-600 hover:bg-accent-700 text-white font-bold py-2 rounded-xl transition-colors text-sm"
+                type="submit"
+                disabled={!contactText.trim() || contactSending}
+                className="w-full bg-accent-600 hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded-xl transition-colors text-sm"
               >
-                Send Message
+                {contactSending ? 'Sending…' : 'Send Message'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </header>

@@ -2,56 +2,115 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to get user role
-    function getUserRole() {
-      // Assuming user role is stored in a 'users' collection with document ID matching auth uid
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function validStatus(s) {
+      return s in ['TO DO', 'IN PROGRESS', 'COMPLETE'];
     }
 
     match /spaces/{spaceId} {
-      // Anyone logged in can read
-      allow read: if request.auth != null;
-      // Only admins can create, update, or delete spaces
-      allow write: if request.auth != null && getUserRole() == 'admin';
+      allow read: if signedIn();
+      // Only admins can create or update spaces; deletes go through the backend (cascade)
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /projects/{projectId} {
-      allow read: if request.auth != null;
-      // Only admins can create, update, or delete projects
-      allow write: if request.auth != null && getUserRole() == 'admin';
+      allow read: if signedIn();
+      // Only admins can create or update projects; deletes go through the backend (cascade)
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /tasks/{taskId} {
-      allow read: if request.auth != null;
-      // Employees can create and update tasks, but only admins can delete them
-      allow create, update: if request.auth != null;
-      allow delete: if request.auth != null && getUserRole() == 'admin';
-      
-      // Sub-collections under tasks (e.g., comments, activities)
+      allow read: if signedIn();
+
+      // Employees may only assign new tasks to themselves (or leave them unassigned)
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 300
+        && validStatus(request.resource.data.status)
+        && !('completedBy' in request.resource.data)
+        && !('completedAt' in request.resource.data)
+        && (isAdmin() || request.resource.data.assigneeId in ['', request.auth.uid]);
+
+      // Status, completion and XP bookkeeping are server-only (PATCH /api/tasks/:id/status)
+      allow update: if signedIn()
+        && !changed().hasAny(['status', 'completedBy', 'completedAt', 'createdBy'])
+        && (isAdmin()
+            || !changed().hasAny(['assigneeId'])
+            || request.resource.data.assigneeId in ['', request.auth.uid]);
+
+      allow delete: if isAdmin();
+
       match /comments/{commentId} {
-        allow read, write: if request.auth != null;
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000;
+        allow update, delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       }
+
       match /activities/{activityId} {
-        allow read, write: if request.auth != null;
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isAdmin();
       }
     }
 
     match /users/{userId} {
-      allow read: if request.auth != null;
-      // Users can create their own document (signup) and update their own profile
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && (request.auth.uid == userId || getUserRole() == 'admin');
-      allow delete: if request.auth != null && getUserRole() == 'admin';
+      allow read: if signedIn();
+
+      // Self-signup always starts as an employee with zero XP
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'employee'
+        && request.resource.data.get('productivityScore', 0) == 0
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'email', 'name', 'role', 'status', 'createdAt', 'updatedAt',
+              'productivityScore', 'notifications', 'favoriteProjects']);
+
+      // Users may edit their own profile fields, but never their role or XP
+      allow update: if isAdmin()
+        || (request.auth.uid == userId
+            && changed().hasOnly(['name', 'notifications', 'status', 'updatedAt', 'favoriteProjects']));
+
+      allow delete: if isAdmin();
     }
 
     match /notifications/{notifId} {
-      // Users can read their own notifications
-      allow read: if request.auth != null;
-      // Any authenticated user can create notifications (for mentions, assignments, etc.)
-      allow create: if request.auth != null;
-      // Users can update/delete their own notifications
-      allow update, delete: if request.auth != null;
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+
+      // Senders can't impersonate someone else
+      allow create: if signedIn()
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.userId is string
+        && request.resource.data.read == false
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 500;
+
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && changed().hasOnly(['read']);
+
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }

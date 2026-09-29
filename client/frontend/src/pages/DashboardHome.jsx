@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import useCountUp from '../hooks/useCountUp'
+import { toDateKey, parseDateKey, formatDue } from '../utils/dates'
 
 const STATUS_COLORS = {
   'In Progress': '#F57D43', // Ember
@@ -60,7 +61,7 @@ export default function DashboardHome() {
   const upcomingTasks = useMemo(() => {
     return tasks
       .filter(t => t.dueDate && t.status !== 'COMPLETE' && !t.isArchived)
-      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
       .slice(0, 4)
   }, [tasks])
 
@@ -89,7 +90,7 @@ export default function DashboardHome() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
-      const dateKey = d.toISOString().slice(0, 10)
+      const dateKey = toDateKey(d)
 
       const dueTasks = tasks.filter(task => task.dueDate === dateKey && !task.isArchived)
       const completedDueTasks = dueTasks.filter(task => task.status === 'COMPLETE')
@@ -282,28 +283,27 @@ export default function DashboardHome() {
             <h3 className="text-sm font-semibold text-neutral-100 flex items-center gap-2">
               <Calendar size={16} className="text-neutral-500" aria-hidden="true" /> Upcoming deadlines
             </h3>
-            {projects[0] && (
-              <button
-                onClick={() => navigate(`/dashboard/list/${projects[0].id}`)}
-                className="text-xs text-neutral-400 hover:text-white flex items-center gap-1 transition-colors"
-              >
-                View all <ArrowRight size={12} />
-              </button>
-            )}
+            <button
+              onClick={() => navigate('/dashboard/my-tasks')}
+              className="text-xs text-neutral-400 hover:text-white flex items-center gap-1 transition-colors"
+            >
+              My tasks <ArrowRight size={12} />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
             {upcomingTasks.length > 0 ? (
               upcomingTasks.map(task => {
-                const date = new Date(task.dueDate)
-                const isToday = date.toDateString() === new Date().toDateString()
-                const isOverdue = date < new Date() && !isToday
+                const todayKey = toDateKey()
+                const isToday = task.dueDate === todayKey
+                const isOverdue = !!parseDateKey(task.dueDate) && task.dueDate < todayKey
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={task.id}
                     onClick={() => openTaskDrawer(task)}
-                    className="flex items-center justify-between p-3 rounded-xl bg-panel border border-raised hover:border-edge-2 hover:bg-raised cursor-pointer group transition-colors duration-200"
+                    className="w-full text-left flex items-center justify-between p-3 rounded-xl bg-panel border border-raised hover:border-edge-2 hover:bg-raised cursor-pointer group transition-colors duration-200"
                   >
                     <div className="flex flex-col gap-1 min-w-0 pr-4">
                       <span className="text-sm font-bold text-neutral-200 group-hover:text-white truncate">{task.title}</span>
@@ -315,9 +315,9 @@ export default function DashboardHome() {
                       isToday ? 'bg-orange-500/10 text-orange-400' :
                         'bg-raised text-neutral-300'
                       }`}>
-                      {isOverdue ? 'Overdue' : isToday ? 'Today' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {isOverdue ? 'Overdue' : isToday ? 'Today' : formatDue(task.dueDate)}
                     </div>
-                  </div>
+                  </button>
                 )
               })
             ) : (

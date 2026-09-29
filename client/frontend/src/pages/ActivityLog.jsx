@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useProject } from '../context/ProjectContext'
 import {
   Activity, CheckSquare, Folder, User, Settings,
-  Search, Filter, Clock, LayoutGrid
+  Search, Filter, Clock, LayoutGrid, Zap
 } from 'lucide-react'
 
 export default function ActivityLog() {
@@ -19,6 +19,7 @@ export default function ActivityLog() {
       case 'space': return <Folder size={16} className="text-yellow-400" />
       case 'user': return <User size={16} className="text-green-400" />
       case 'system': return <Settings size={16} className="text-red-400" />
+      case 'xp': return <Zap size={16} className="text-yellow-400" />
       default: return <Activity size={16} className="text-neutral-400" />
     }
   }
@@ -30,6 +31,7 @@ export default function ActivityLog() {
       case 'space': return 'bg-yellow-500/10 border-yellow-500/20'
       case 'user': return 'bg-green-500/10 border-green-500/20'
       case 'system': return 'bg-red-500/10 border-red-500/20'
+      case 'xp': return 'bg-yellow-500/10 border-yellow-500/20'
       default: return 'bg-neutral-500/10 border-neutral-500/20'
     }
   }
@@ -64,6 +66,7 @@ export default function ActivityLog() {
             <input
               type="text"
               placeholder="Search logs..."
+              aria-label="Search logs"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-card border border-raised rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-accent-500 text-white w-full md:w-64 transition-colors"
@@ -73,6 +76,7 @@ export default function ActivityLog() {
           <div className="relative flex items-center bg-card border border-raised rounded-lg px-3">
             <Filter size={14} className="text-neutral-500 mr-2" />
             <select
+              aria-label="Filter by action type"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               className="bg-transparent text-sm text-neutral-300 py-2 focus:outline-none cursor-pointer"
@@ -82,13 +86,15 @@ export default function ActivityLog() {
               <option value="project" className="bg-card">Projects</option>
               <option value="space" className="bg-card">Spaces</option>
               <option value="user" className="bg-card">Users</option>
-              <option value="system" className="bg-card">System & XP</option>
+              <option value="xp" className="bg-card">XP & Leaderboard</option>
+              <option value="system" className="bg-card">System</option>
             </select>
           </div>
 
           <div className="relative flex items-center bg-card border border-raised rounded-lg px-3">
             <User size={14} className="text-neutral-500 mr-2" />
             <select
+              aria-label="Filter by user"
               value={filterUser}
               onChange={(e) => setFilterUser(e.target.value)}
               className="bg-transparent text-sm text-neutral-300 py-2 focus:outline-none cursor-pointer max-w-[150px] truncate"
@@ -106,7 +112,7 @@ export default function ActivityLog() {
         <div className="relative border-l-2 border-raised ml-4 space-y-8 pb-10">
           {filteredLogs.length > 0 ? (
             filteredLogs.map((log) => (
-              <div key={log.id} className="relative flex items-start gap-6 group">
+              <div key={log._id || log.id} className="relative flex items-start gap-6 group">
                 {/* Timeline Dot */}
                 <div className={`absolute -left-[21px] p-2 rounded-full border bg-base shadow-lg ${getBgForType(log.type)}`}>
                   {getIconForType(log.type)}

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Mail, Lock, User, ArrowRight } from 'lucide-react'
 import { AuthForm, AuthField, AuthError, PrimaryButton, GoogleButton, Divider } from '../components/auth/AuthShell'
 import { useAuthSwitch } from '../components/auth/authSwitch'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, friendlyAuthError } from '../context/AuthContext'
 
 export default function Signup() {
   const navigate = useNavigate()
@@ -11,11 +11,10 @@ export default function Signup() {
   const switchTo = useAuthSwitch()
   // Return to the page that sent the user here (e.g. a deep link from the landing page)
   const redirectTo = location.state?.from?.pathname || '/dashboard'
-  const { signup, googleSignIn, error: authError } = useAuth()
+  const { signup, googleSignIn } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  // Role state removed - defaulting to 'employee' in logic
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,11 +24,11 @@ export default function Signup() {
     setIsLoading(true)
 
     try {
-      // Hardcoded 'employee' role here for security
-      await signup(email, password, name, 'employee')
+      // New accounts are always employees; Firestore rules reject anything else
+      await signup(email.trim(), password, name.trim())
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      setError(err.message || 'Signup failed. Please try again.')
+      setError(friendlyAuthError(err, 'Signup failed. Please try again.'))
       setIsLoading(false)
     }
   }
@@ -42,7 +41,7 @@ export default function Signup() {
       await googleSignIn()
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      setError(err.message || 'Google sign up failed.')
+      setError(friendlyAuthError(err, 'Google sign up failed.'))
       setIsLoading(false)
     }
   }
@@ -72,6 +71,7 @@ export default function Signup() {
           type="text"
           autoComplete="name"
           placeholder="Riya Kapoor"
+          maxLength={60}
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -94,12 +94,13 @@ export default function Signup() {
           type="password"
           autoComplete="new-password"
           placeholder="At least 6 characters"
+          minLength={6}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
 
-        {(error || authError) && <AuthError>{error || authError}</AuthError>}
+        {error && <AuthError>{error}</AuthError>}
 
         <PrimaryButton type="submit" disabled={isLoading} loading={isLoading} loadingLabel="Creating account…">
           Create account

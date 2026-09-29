@@ -1,101 +1,104 @@
-import React, { useState } from 'react'
-import { NavLink, useParams, useNavigate } from 'react-router-dom'
+import React, { useState, useMemo } from 'react'
+import { useParams } from 'react-router-dom'
 import { useProject } from '../context/ProjectContext'
 import { useAuth } from '../context/AuthContext'
-import {
-  List, Calendar, Kanban, Table, Plus, Filter, Search,
-  ChevronDown, LayoutGrid, Flag, CheckCircle2, Circle
-} from 'lucide-react'
+import { Search, Flag, ArrowUp, ArrowDown, ArrowUpDown, Archive } from 'lucide-react'
 import CreateTaskForm from '../components/CreateTaskForm'
+import ProjectViewShell from '../components/ProjectViewShell'
+import { formatDue, isOverdue } from '../utils/dates'
 
 // --- CONSTANTS ---
 const PRIORITIES = {
-  High: { color: 'text-red-400 bg-red-400/10 border-red-400/20', icon: Flag },
-  Normal: { color: 'text-neutral-300 bg-neutral-500/10 border-neutral-500/25', icon: Flag },
-  Low: { color: 'text-neutral-400 bg-neutral-400/10 border-neutral-400/20', icon: Flag }
+  High: { color: 'text-red-400 bg-red-400/10 border-red-400/20', rank: 0 },
+  Normal: { color: 'text-neutral-300 bg-neutral-500/10 border-neutral-500/25', rank: 1 },
+  Low: { color: 'text-neutral-400 bg-neutral-400/10 border-neutral-400/20', rank: 2 }
 }
 
-const STATUSES = {
-  'TO DO': { color: 'bg-neutral-500', icon: Circle },
-  'IN PROGRESS': { color: 'bg-ember-500', icon: Circle },
-  'COMPLETE': { color: 'bg-green-500', icon: CheckCircle2 }
-}
+const STATUSES = { 'TO DO': 0, 'IN PROGRESS': 1, 'COMPLETE': 2 }
 
-// Navigation Tab Link (Matching CalendarView style)
-const TabLink = ({ to, icon: Icon, label }) => (
-  <NavLink
-    to={to}
-    className={({ isActive }) => `flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-accent-500 text-white' : 'border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-raised rounded-t-md'}`}>
-    <Icon size={14} /> {label}
-  </NavLink>
-)
+const COLUMNS = [
+  { field: 'title', label: 'Task Name', width: 'w-[40%]', align: 'text-left' },
+  { field: 'assignee', label: 'Assignee', width: 'w-[15%]', align: 'text-center' },
+  { field: 'status', label: 'Status', width: 'w-[15%]', align: 'text-center' },
+  { field: 'dueDate', label: 'Due Date', width: 'w-[15%]', align: 'text-center' },
+  { field: 'priority', label: 'Priority', width: 'w-[15%]', align: 'text-center' },
+]
 
 export default function TableView() {
   const { projectId } = useParams()
-  const navigate = useNavigate()
-  const { tasks, updateTask, addTask, members, getMemberById, projects, openTaskDrawer } = useProject()
+  const { tasks, updateTask, addTask, members, getMemberById, openTaskDrawer } = useProject()
   const { userRole } = useAuth()
 
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false)
-
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [priorityFilter, setPriorityFilter] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
+  const [sort, setSort] = useState({ field: null, dir: 'asc' })
   const [editingCell, setEditingCell] = useState(null) // { taskId, field }
   const [editValue, setEditValue] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('') // For the "Quick Add" row
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [defaultStatus] = useState('TO DO')
 
-  // 1. Resolve Project & Tasks (String ID Fix)
-  const currentProject = projects.find(p => String(p.id) === String(projectId))
-  const projectTasks = tasks.filter(t => String(t.projectId) === String(projectId))
+  const filteredTasks = useMemo(() => {
+    const q = searchQuery.toLowerCase()
+    const rows = tasks.filter(t =>
+      String(t.projectId) === String(projectId) &&
+      (showArchived ? t.isArchived : !t.isArchived) &&
+      (t.title || '').toLowerCase().includes(q) &&
+      (!statusFilter || t.status === statusFilter) &&
+      (!priorityFilter || t.priority === priorityFilter)
+    )
+    if (!sort.field) return rows
 
-  // 2. Filter Logic
-  const filteredTasks = projectTasks.filter(t =>
-    t.title.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    const value = (t) => {
+      switch (sort.field) {
+        case 'assignee': return (getMemberById(t.assigneeId)?.name || '￿').toLowerCase()
+        case 'status': return STATUSES[t.status] ?? 9
+        case 'priority': return PRIORITIES[t.priority]?.rank ?? 9
+        case 'dueDate': return t.dueDate || '￿'
+        default: return (t.title || '').toLowerCase()
+      }
+    }
+    const dir = sort.dir === 'asc' ? 1 : -1
+    return [...rows].sort((a, b) => (value(a) > value(b) ? dir : value(a) < value(b) ? -dir : 0))
+  }, [tasks, projectId, showArchived, searchQuery, statusFilter, priorityFilter, sort, getMemberById])
+
+  const toggleSort = (field) => setSort(prev => (
+    prev.field !== field ? { field, dir: 'asc' }
+      : prev.dir === 'asc' ? { field, dir: 'desc' }
+        : { field: null, dir: 'asc' }
+  ))
 
   // --- Handlers ---
 
-  const handleCellEdit = (taskId, field) => {
-    setEditingCell({ taskId, field })
-    const task = projectTasks.find(t => t.id === taskId)
-    // Pre-fill value
-    if (field === 'assignee') setEditValue(task.assigneeId || '')
-    else setEditValue(task[field] || '')
+  const handleCellEdit = (task, field) => {
+    if (field === 'assignee' && userRole !== 'admin') return
+    setEditingCell({ taskId: task.id, field })
+    setEditValue(field === 'assignee' ? (task.assigneeId || '') : (task[field] || ''))
   }
 
-  const handleSaveCell = (taskId, field) => {
-    if (editValue !== undefined) {
-      if (field === 'assignee') updateTask(taskId, { assigneeId: editValue })
-      else updateTask(taskId, { [field]: editValue })
-    }
+  const handleSaveCell = (task, field) => {
+    const key = field === 'assignee' ? 'assigneeId' : field
+    const current = task[key] || ''
+    const next = field === 'title' ? editValue.trim() : editValue
+    if (next !== current && !(field === 'title' && !next)) updateTask(task.id, { [key]: next })
     setEditingCell(null)
   }
 
-  const handleKeyDown = (e, taskId, field) => {
-    if (e.key === 'Enter') handleSaveCell(taskId, field)
+  const handleKeyDown = (e, task, field) => {
+    if (e.key === 'Enter') handleSaveCell(task, field)
     if (e.key === 'Escape') setEditingCell(null)
   }
 
   const handleQuickAdd = (e) => {
     if (e.key === 'Enter' && newTaskTitle.trim()) {
-      addTask({
-        title: newTaskTitle,
-        projectId: projectId, // Passed as string
-        status: 'TO DO',
-        priority: 'Normal',
-        assigneeId: ''
-      })
+      addTask({ title: newTaskTitle.trim(), projectId, status: 'TO DO', priority: 'Normal', assigneeId: '' })
       setNewTaskTitle('')
     }
   }
 
   const handleCreateTask = (taskData) => {
-    addTask({
-      ...taskData,
-      projectId: projectId,
-      status: defaultStatus
-    })
+    addTask({ ...taskData, projectId, status: 'TO DO' })
     setShowCreateModal(false)
   }
 
@@ -103,74 +106,47 @@ export default function TableView() {
 
   const renderCell = (task, field) => {
     const isEditing = editingCell?.taskId === task.id && editingCell?.field === field
+    const commonInputClass = 'w-full bg-base text-white text-xs px-2 py-1.5 rounded border border-accent-500 focus:outline-none'
 
-    // EDIT MODE
     if (isEditing) {
-      const commonInputClass = "w-full bg-base text-white text-xs px-2 py-1.5 rounded border border-accent-500 focus:outline-none"
-
+      const selectProps = {
+        autoFocus: true,
+        value: editValue,
+        onChange: (e) => setEditValue(e.target.value),
+        onBlur: () => handleSaveCell(task, field),
+        onKeyDown: (e) => handleKeyDown(e, task, field),
+        onClick: (e) => e.stopPropagation(),
+        className: commonInputClass,
+      }
       if (field === 'assignee') {
         return (
-          userRole === 'admin' ? (
-            <select
-              autoFocus
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={() => handleSaveCell(task.id, field)}
-              className={commonInputClass}
-            >
-              <option value="">Unassigned</option>
-              {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-          ) : (
-            // Non-admin view in edit mode (should not happen if click is disabled)
-            // Or just show the current assignee without an input
-            <div className="flex items-center gap-1.5 opacity-50 cursor-not-allowed">
-              <div className="w-5 h-5 rounded-full bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 flex items-center justify-center text-[9px] font-bold text-accent-200">
-                {getMemberById(task.assigneeId)?.name?.[0]?.toUpperCase() || 'U'}
-              </div>
-              <span className="text-xs text-neutral-400 font-medium">
-                {getMemberById(task.assigneeId)?.name?.split(' ')[0] || 'Unassigned'}
-              </span>
-            </div>
-          )
+          <select {...selectProps} aria-label="Assignee">
+            <option value="">Unassigned</option>
+            {members.map(m => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}
+          </select>
         )
       }
       if (field === 'priority') {
         return (
-          <select
-            autoFocus
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={() => handleSaveCell(task.id, field)}
-            className={commonInputClass}
-          >
+          <select {...selectProps} aria-label="Priority">
             {Object.keys(PRIORITIES).map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         )
       }
       if (field === 'status') {
         return (
-          <select
-            autoFocus
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={() => handleSaveCell(task.id, field)}
-            className={commonInputClass}
-          >
+          <select {...selectProps} aria-label="Status">
             {Object.keys(STATUSES).map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         )
       }
-      // Default Input (Title, Date)
       return (
         <input
-          autoFocus
+          {...selectProps}
+          aria-label={field === 'dueDate' ? 'Due date' : 'Title'}
           type={field === 'dueDate' ? 'date' : 'text'}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={() => handleSaveCell(task.id, field)}
-          onKeyDown={(e) => handleKeyDown(e, task.id, field)}
-          className={commonInputClass}
+          maxLength={field === 'title' ? 300 : undefined}
+          className={`${commonInputClass} [color-scheme:dark]`}
         />
       )
     }
@@ -179,49 +155,43 @@ export default function TableView() {
     switch (field) {
       case 'title':
         return (
-          <span
-            onClick={(e) => { e.stopPropagation(); openTaskDrawer(task); }}
-            className="font-medium text-neutral-200 truncate block hover:text-accent-400 transition-colors">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); openTaskDrawer(task) }}
+            title="Open task (click the empty cell area to rename)"
+            className="font-medium text-neutral-200 truncate block text-left hover:text-accent-400 transition-colors max-w-full"
+          >
             {task.title}
-          </span>
+          </button>
         )
-      case 'assignee':
-      {
+      case 'assignee': {
         const assignee = getMemberById(task.assigneeId)
         return (
-          <div
-            onClick={() => {
-              if (userRole === 'admin') {
-                handleCellEdit(task.id, 'assignee')
-              }
-            }}
-            className={`flex items-center gap-1.5 ${userRole === 'admin' ? 'cursor-pointer hover:bg-edge' : 'cursor-default'} px-1.5 py-0.5 rounded -ml-1.5 transition-colors group`}
-          >
+          <div className={`flex items-center gap-1.5 ${userRole === 'admin' ? 'hover:bg-edge' : ''} px-1.5 py-0.5 rounded transition-colors`}>
             <div className="w-5 h-5 rounded-full bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 flex items-center justify-center text-[9px] font-bold text-accent-200">
-              {assignee?.name?.[0]?.toUpperCase() || 'U'}
+              {assignee?.name?.[0]?.toUpperCase() || '–'}
             </div>
-            <span className="text-xs text-neutral-400 font-medium group-hover:text-neutral-300">
+            <span className="text-xs text-neutral-400 font-medium">
               {assignee?.name?.split(' ')[0] || 'Unassigned'}
             </span>
           </div>
         )
       }
-      case 'dueDate':
+      case 'dueDate': {
+        const overdue = task.status !== 'COMPLETE' && isOverdue(task.dueDate)
         return (
-          <span className={task.dueDate ? 'text-neutral-300' : 'text-neutral-600 italic'}>
-            {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
+          <span className={overdue ? 'text-red-400 font-semibold' : task.dueDate ? 'text-neutral-300' : 'text-neutral-600 italic'}>
+            {formatDue(task.dueDate) || '-'}
           </span>
         )
+      }
       case 'priority':
-      {
-        const PriorityIcon = PRIORITIES[task.priority]?.icon || Flag
         return (
           <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${PRIORITIES[task.priority]?.color || 'text-neutral-500 border-neutral-700'}`}>
-            <PriorityIcon size={10} />
+            <Flag size={10} />
             {task.priority}
           </div>
         )
-      }
       case 'status':
         return (
           <div className="flex items-center justify-center gap-2">
@@ -234,75 +204,42 @@ export default function TableView() {
     }
   }
 
+  const selectClass = 'bg-card border border-raised rounded-md px-2 py-1.5 text-xs text-neutral-300 focus:outline-none focus:border-accent-500/50 cursor-pointer'
+
   return (
-    <>
-      {/* Header & Tabs */}
-      <div className="bg-card border-b border-raised">
-        <div className="px-6 pt-4 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-neutral-400 relative">
-            <span className="bg-edge w-5 h-5 flex items-center justify-center rounded text-[10px]">TS</span>
-            <span>Team Space</span>
-            <span className="text-neutral-600">/</span>
-            <LayoutGrid size={14} />
-            <div
-              className="flex items-center gap-1 cursor-pointer hover:text-white"
-              onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-            >
-              <span className="font-semibold text-white">{currentProject?.name || 'Project'}</span>
-              <ChevronDown size={14} />
-            </div>
-
-            {showProjectDropdown && (
-              <div className="absolute top-full left-32 mt-1 w-48 bg-raised border border-edge rounded-md shadow-xl z-50 py-1">
-                {projects.map(p => (
-                  <div
-                    key={p.id}
-                    className="px-3 py-2 hover:bg-edge text-sm text-neutral-300 cursor-pointer flex items-center gap-2"
-                    onClick={() => {
-                      navigate(`/dashboard/table/${p.id}`);
-                      setShowProjectDropdown(false);
-                    }}
-                  >
-                    <LayoutGrid size={12} /> {p.name}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-neutral-400 hover:text-white cursor-pointer transition-colors">Share</span>
-          </div>
-        </div>
-        <div className="px-4 flex items-center gap-1 mt-1">
-          <TabLink to={`/dashboard/list/${projectId}`} icon={List} label="List" />
-          <TabLink to={`/dashboard/board/${projectId}`} icon={Kanban} label="Board" />
-          <TabLink to={`/dashboard/calendar/${projectId}`} icon={Calendar} label="Calendar" />
-          <TabLink to={`/dashboard/table/${projectId}`} icon={Table} label="Table" />
-          <button className="flex items-center gap-1 px-2 text-xs font-medium text-neutral-400 hover:text-white">
-            <Plus size={12} /> View
-          </button>
-        </div>
-      </div>
-
+    <ProjectViewShell projectId={projectId} view="table">
       {/* Toolbar */}
-      <div className="bg-base px-6 py-3 flex items-center justify-between border-b border-raised">
-        <div className="flex items-center gap-2">
+      <div className="bg-base px-6 py-3 flex flex-wrap items-center justify-between gap-2 border-b border-raised">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative group">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500 group-focus-within:text-accent-400 transition-colors" />
             <input
               placeholder="Filter tasks..."
+              aria-label="Filter tasks by title"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-card border border-raised rounded-md pl-8 pr-3 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-accent-500/50 w-48 transition-all"
             />
           </div>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-card border border-raised hover:bg-raised/80 rounded-md text-xs font-medium text-neutral-300 transition-all">
-            <Filter size={12} /> Filter
+          <select aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
+            <option value="">All statuses</option>
+            {Object.keys(STATUSES).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select aria-label="Filter by priority" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className={selectClass}>
+            <option value="">All priorities</option>
+            {Object.keys(PRIORITIES).map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <button
+            type="button"
+            onClick={() => setShowArchived(!showArchived)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${showArchived ? 'bg-accent-500/20 text-accent-400 border border-accent-500/30' : 'text-neutral-400 hover:bg-raised'}`}
+          >
+            <Archive size={12} /> {showArchived ? 'Hide Archived' : 'Show Archived'}
           </button>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-neutral-500">{filteredTasks.length} tasks</span>
-          <button onClick={() => setShowCreateModal(true)} className="bg-white text-black text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-neutral-200 transition-colors ml-2">
+          <button type="button" onClick={() => setShowCreateModal(true)} className="bg-white text-black text-xs font-semibold px-3 py-1.5 rounded-md hover:bg-neutral-200 transition-colors ml-2">
             Add Task
           </button>
         </div>
@@ -313,113 +250,79 @@ export default function TableView() {
         <div className="min-w-[800px] border border-raised rounded-lg overflow-hidden bg-card">
 
           <table className="w-full text-left border-collapse">
-            {/* Table Header */}
             <thead className="bg-panel text-xs font-bold text-neutral-500 uppercase tracking-wider">
               <tr>
-                <th className="px-6 py-3 border-b border-raised w-[40%] font-semibold">
-                  <div className="flex items-center gap-2 hover:text-neutral-300 cursor-pointer transition-colors">
-                    Task Name <ChevronDown size={10} className="opacity-50" />
-                  </div>
-                </th>
-                <th className="px-4 py-3 border-b border-raised w-[15%] font-semibold text-center">Assignee</th>
-                <th className="px-4 py-3 border-b border-raised w-[15%] font-semibold text-center">Status</th>
-                <th className="px-4 py-3 border-b border-raised w-[15%] font-semibold text-center">Due Date</th>
-                <th className="px-4 py-3 border-b border-raised w-[15%] font-semibold text-center">Priority</th>
+                {COLUMNS.map(col => {
+                  const active = sort.field === col.field
+                  const SortIcon = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
+                  return (
+                    <th
+                      key={col.field}
+                      scope="col"
+                      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      className={`${col.field === 'title' ? 'px-6' : 'px-4'} py-3 border-b border-raised ${col.width} font-semibold ${col.align}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(col.field)}
+                        className={`inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-neutral-300 transition-colors ${active ? 'text-neutral-200' : ''}`}
+                      >
+                        {col.label} <SortIcon size={11} className={active ? '' : 'opacity-40'} />
+                      </button>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
 
             {/* Table Body */}
             <tbody className="divide-y divide-raised">
               {filteredTasks.length > 0 ? filteredTasks.map((task) => (
-                <tr
-                  key={task.id}
-                  className="group hover:bg-raised/50 transition-colors text-sm"
-                >
-                  {/* Title Cell */}
-                  <td
-                    className="px-6 py-2.5 border-r border-transparent group-hover:border-raised cursor-pointer"
-                    onClick={() => handleCellEdit(task.id, 'title')}
-                  >
-                    <div className="min-h-[24px] flex items-center">
-                      {renderCell(task, 'title')}
-                    </div>
-                  </td>
-
-                  {/* Assignee Cell */}
-                  <td
-                    className="px-4 py-2.5 border-r border-transparent group-hover:border-raised cursor-pointer text-center"
-                  // The onClick for assignee is now handled inside renderCell for view mode
-                  >
-                    <div className="min-h-[24px] flex items-center justify-center">
-                      {renderCell(task, 'assignee')}
-                    </div>
-                  </td>
-
-                  {/* Status Cell */}
-                  <td
-                    className="px-4 py-2.5 border-r border-transparent group-hover:border-raised cursor-pointer text-center"
-                    onClick={() => handleCellEdit(task.id, 'status')}
-                  >
-                    <div className="min-h-[24px] flex items-center justify-center">
-                      {renderCell(task, 'status')}
-                    </div>
-                  </td>
-
-                  {/* Due Date Cell */}
-                  <td
-                    className="px-4 py-2.5 border-r border-transparent group-hover:border-raised cursor-pointer text-center"
-                    onClick={() => handleCellEdit(task.id, 'dueDate')}
-                  >
-                    <div className="min-h-[24px] flex items-center justify-center">
-                      {renderCell(task, 'dueDate')}
-                    </div>
-                  </td>
-
-                  {/* Priority Cell */}
-                  <td
-                    className="px-4 py-2.5 cursor-pointer text-center"
-                    onClick={() => handleCellEdit(task.id, 'priority')}
-                  >
-                    <div className="min-h-[24px] flex items-center justify-center">
-                      {renderCell(task, 'priority')}
-                    </div>
-                  </td>
+                <tr key={task.id} className="group hover:bg-raised/50 transition-colors text-sm">
+                  {COLUMNS.map(col => (
+                    <td
+                      key={col.field}
+                      className={`${col.field === 'title' ? 'px-6' : 'px-4'} py-2.5 border-r border-transparent group-hover:border-raised last:border-r-0 cursor-pointer ${col.align}`}
+                      onClick={() => handleCellEdit(task, col.field)}
+                    >
+                      <div className={`min-h-[24px] flex items-center ${col.field === 'title' ? '' : 'justify-center'}`}>
+                        {renderCell(task, col.field)}
+                      </div>
+                    </td>
+                  ))}
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-neutral-500">
+                  <td colSpan={COLUMNS.length} className="px-6 py-12 text-center text-neutral-500">
                     No tasks found.
                   </td>
                 </tr>
               )}
 
               {/* Quick Add Row */}
-              <tr className="bg-base/30 hover:bg-base/50 transition-colors border-t border-raised">
-                <td className="px-6 py-2.5">
-                  <div className="flex items-center gap-3 text-neutral-500 group-focus-within:text-accent-400">
-                    <Plus size={16} />
+              {!showArchived && (
+                <tr className="bg-base/30 hover:bg-base/50 transition-colors border-t border-raised">
+                  <td className="px-6 py-2.5" colSpan={COLUMNS.length}>
                     <input
                       value={newTaskTitle}
+                      maxLength={300}
+                      aria-label="Quick add task"
                       onChange={(e) => setNewTaskTitle(e.target.value)}
                       onKeyDown={handleQuickAdd}
-                      placeholder="Add a new task..."
-                      className="bg-transparent border-none outline-none text-sm text-neutral-300 placeholder-neutral-600 flex-1 h-8"
+                      placeholder="+ Add a new task and press Enter..."
+                      className="bg-transparent border-none outline-none text-sm text-neutral-300 placeholder-neutral-600 w-full h-8"
                     />
-                  </div>
-                </td>
-                <td colSpan="4"></td>
-              </tr>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
-          <CreateTaskForm onCreate={handleCreateTask} onCancel={() => setShowCreateModal(false)} members={members} defaultStatus={defaultStatus} />
-        </div>
+        <CreateTaskForm onCreate={handleCreateTask} onCancel={() => setShowCreateModal(false)} defaultStatus="TO DO" />
       )}
-    </>
+    </ProjectViewShell>
   )
 }

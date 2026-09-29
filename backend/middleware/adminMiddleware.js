@@ -8,7 +8,7 @@ const isAdmin = async (req, res, next) => {
 
   try {
     // Fetch the user's document from Firestore
-    const userDoc = await admin.firestore().collection('users').doc(req.user.uid).get();
+    const userDoc = await admin.db().collection('users').doc(req.user.uid).get();
     
     if (!userDoc.exists) {
       return res.status(404).json({ message: 'User not found in database.' });

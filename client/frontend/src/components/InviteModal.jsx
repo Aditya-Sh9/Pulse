@@ -1,16 +1,16 @@
 import React, { useState } from 'react'
 import { X, Mail, Send, CheckCircle2, AlertCircle, Copy } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
 import { useProject } from '../context/ProjectContext'
+import { copyToClipboard } from '../utils/links'
 
 export default function InviteModal({ isOpen, onClose }) {
-  const { currentUser } = useAuth()
-  
   const { apiFetch, showToast } = useProject()
-  
+
   const [email, setEmail] = useState('')
+  const [sentTo, setSentTo] = useState('')
   const [status, setStatus] = useState('idle') // idle, sending, success, error
-  
+  const [errorText, setErrorText] = useState('')
+
   if (!isOpen) return null
 
   const inviteLink = `${window.location.origin}/signup`
@@ -20,23 +20,16 @@ export default function InviteModal({ isOpen, onClose }) {
     if (!email) return
 
     setStatus('sending')
-
-    const templateParams = {
-      to_email: email,
-      sender_name: currentUser?.displayName || 'A Team Member',
-      invite_link: inviteLink,
-      name: currentUser?.displayName || 'Workspace Admin',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      message: `I've set up our workspace on Pulse. Join me so we can sync our tasks and start collaborating in real-time!`
-    }
+    setErrorText('')
 
     try {
-      // Send the request to our Node.js backend instead of directly to EmailJS
+      // The server composes the email (sender, copy and link) so only the address is sent
       await apiFetch('/api/invite', {
         method: 'POST',
-        body: JSON.stringify(templateParams)
+        body: JSON.stringify({ to_email: email.trim() })
       })
-      
+
+      setSentTo(email.trim())
       setStatus('success')
       setEmail('')
       setTimeout(() => {
@@ -45,26 +38,27 @@ export default function InviteModal({ isOpen, onClose }) {
       }, 2000)
     } catch (error) {
       console.error('Invite failed:', error)
+      setErrorText(error.message)
       setStatus('error')
     }
   }
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(inviteLink)
-    showToast('Invite link copied', 'success')
+  const copyLink = async () => {
+    const ok = await copyToClipboard(inviteLink)
+    showToast(ok ? 'Invite link copied' : 'Could not access the clipboard', ok ? 'success' : 'error')
   }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal */}
       <div className="relative w-full max-w-md bg-card border border-edge rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
+
         {/* Top Glow/Pulse Line */}
 
         {/* Header */}
@@ -73,14 +67,14 @@ export default function InviteModal({ isOpen, onClose }) {
             <div className="w-2 h-2 rounded-full bg-accent-500"></div>
             Invite Member
           </h3>
-          <button onClick={onClose} className="text-neutral-500 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-md">
+          <button onClick={onClose} aria-label="Close" className="text-neutral-500 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-md">
             <X size={20} />
           </button>
         </div>
 
         {/* Body */}
         <div className="p-6 space-y-6">
-          
+
           {status === 'success' ? (
             <div className="text-center py-4 animate-in fade-in zoom-in-95">
               <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
@@ -89,7 +83,7 @@ export default function InviteModal({ isOpen, onClose }) {
               <h4 className="text-xl font-bold text-white mb-2">Invitation Sent!</h4>
               <p className="text-neutral-400 text-sm leading-relaxed">
                 An interactive invite has been dispatched to <br/>
-                <span className="text-accent-400 font-medium">{email}</span>
+                <span className="text-accent-400 font-medium">{sentTo}</span>
               </p>
             </div>
           ) : (
@@ -114,7 +108,7 @@ export default function InviteModal({ isOpen, onClose }) {
               {status === 'error' && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-400 text-xs animate-shake">
                   <AlertCircle size={14} />
-                  Dispatch failed. Check your API configuration.
+                  {errorText || 'Could not send the invitation. Try again.'}
                 </div>
               )}
 
@@ -144,10 +138,11 @@ export default function InviteModal({ isOpen, onClose }) {
             <code className="flex-1 text-[11px] text-neutral-500 truncate px-3 font-mono">
               {inviteLink}
             </code>
-            <button 
+            <button
               onClick={copyLink}
               className="p-2.5 bg-card hover:bg-raised rounded-lg text-neutral-400 hover:text-white transition-colors border border-edge"
               title="Copy to clipboard"
+              aria-label="Copy invite link"
             >
               <Copy size={14} />
             </button>

@@ -5,15 +5,15 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useProject } from '../context/ProjectContext'
 import { useAuth } from '../context/AuthContext'
 import UserProfileModal from '../components/UserProfileModal'
-import { MessageSquare } from 'lucide-react'
 import {
-  Home, Inbox, CheckCircle, MoreHorizontal, Plus,
-  ChevronRight, ChevronDown, LayoutGrid, Folder, Star, Trash2, Trophy, Settings, Users, Activity
+  Home, Inbox, CheckCircle, Plus, MessageSquare,
+  ChevronRight, ChevronDown, LayoutGrid, Folder, Star, Trash2, Trophy, Settings, Users, Activity, UserCircle
 } from 'lucide-react'
 
 gsap.registerPlugin(useGSAP)
 
 function NavItem({ icon: Icon, label, path, badge, isActive, onNavigate }) {
+  // `badge` is a count; hide it when zero
   return (
     <button
       type="button"
@@ -25,7 +25,7 @@ function NavItem({ icon: Icon, label, path, badge, isActive, onNavigate }) {
     >
       <Icon size={16} aria-hidden="true" className={`transition-colors duration-200 ${isActive ? 'text-accent-400' : ''}`} />
       <span className="flex-1 text-left">{label}</span>
-      {badge && <span className="bg-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full text-white">{badge}</span>}
+      {badge > 0 && <span className="bg-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full text-white">{badge > 99 ? '99+' : badge}</span>}
     </button>
   )
 }
@@ -85,9 +85,13 @@ function PrimaryNav({ children, pathname }) {
 export default function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { spaces, projects, toggleSpaceExpanded, toggleProjectFavorite, addProject, deleteProject, addSpace, deleteSpace, confirmAction } = useProject()
+  const { spaces, projects, members, notifications, toggleSpaceExpanded, toggleProjectFavorite, addProject, deleteProject, addSpace, deleteSpace, confirmAction } = useProject()
+
+  const unreadInbox = notifications.filter(n => !n.read && n.type !== 'message').length
+  const unreadMessages = notifications.filter(n => !n.read && n.type === 'message').length
 
   const { userRole, currentUser } = useAuth()
+  const myProfile = members.find(m => m.id === currentUser?.uid)
 
   const [activeSpaceInput, setActiveSpaceInput] = useState(null)
   const [newProjectName, setNewProjectName] = useState('')
@@ -122,7 +126,7 @@ export default function Sidebar() {
     if (newProjectName.trim()) {
       addProject({
         name: newProjectName.trim(),
-        spaceId: spaceId || (spaces[0]?.id || 'space-1'),
+        spaceId: spaceId || spaces[0]?.id || '',
         icon: 'square'
       })
       setNewProjectName('')
@@ -139,44 +143,52 @@ export default function Sidebar() {
   }
 
   const favorites = projects.filter(p => p.isFavorite)
+  // /dashboard/<view>/<projectId>: highlight the project in every view, not just List
+  const [, , viewSegment, activeProjectId] = location.pathname.split('/')
+  const onProjectView = ['list', 'board', 'calendar', 'table'].includes(viewSegment)
+  const openProject = (id) => navigate(`/dashboard/${onProjectView ? viewSegment : 'list'}/${id}`)
 
   return (
     <aside className="w-[248px] bg-panel border-r border-raised flex flex-col h-full flex-shrink-0 relative">
       <div className="h-16 flex items-center px-3 border-b border-raised relative" ref={workspaceRef}>
-        <div
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={workspaceOpen}
           onClick={() => setWorkspaceOpen(!workspaceOpen)}
-          className="flex items-center gap-2.5 w-full cursor-pointer hover:bg-raised px-2 py-1.5 rounded-lg transition-colors duration-200"
+          className="flex items-center gap-2.5 w-full text-left cursor-pointer hover:bg-raised px-2 py-1.5 rounded-lg transition-colors duration-200"
         >
-          <div
-            onClick={(e) => {
-              e.stopPropagation()
-              setSelectedUser(currentUser)
-            }}
-            className="w-7 h-7 rounded-md bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 flex items-center justify-center text-[11px] font-semibold text-accent-300 transition-transform duration-200 hover:scale-105"
-          >
+          <div className="w-7 h-7 rounded-md bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 flex items-center justify-center text-[11px] font-semibold text-accent-300">
             {getUserInitials()}
           </div>
           <span className="text-sm font-semibold text-neutral-200 flex-1 truncate">{displayName}</span>
           <ChevronDown size={14} className={`text-neutral-500 flex-shrink-0 transition-transform duration-300 ${workspaceOpen ? 'rotate-180' : ''}`} />
-        </div>
+        </button>
 
         {/* Workspace Dropdown */}
         {workspaceOpen && (
           <div className="absolute top-14 left-3 right-3 bg-card border border-edge rounded-xl shadow-2xl shadow-black/40 z-50 overflow-hidden animate-in fade-in slide-in-from-top-1">
-            <div className="p-1">
-              {userRole === 'admin' && (
-                <button
-                  onClick={() => { setWorkspaceOpen(false); navigate('/dashboard/settings'); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-raised hover:text-white rounded-lg transition-colors"
-                >
-                  <Settings size={14} /> Workspace Settings
-                </button>
-              )}
+            <div className="p-1" role="menu">
               <button
+                role="menuitem"
+                onClick={() => { setWorkspaceOpen(false); setSelectedUser(myProfile || currentUser) }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-raised hover:text-white rounded-lg transition-colors"
+              >
+                <UserCircle size={14} /> View my profile
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => { setWorkspaceOpen(false); navigate('/dashboard/settings'); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-raised hover:text-white rounded-lg transition-colors"
+              >
+                <Settings size={14} /> Account Settings
+              </button>
+              <button
+                role="menuitem"
                 onClick={() => { setWorkspaceOpen(false); navigate('/dashboard/team'); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-raised hover:text-white rounded-lg transition-colors"
               >
-                <Users size={14} /> Manage Team
+                <Users size={14} /> {userRole === 'admin' ? 'Manage Team' : 'Team Directory'}
               </button>
             </div>
           </div>
@@ -186,18 +198,17 @@ export default function Sidebar() {
       <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
         <PrimaryNav pathname={location.pathname}>
           <NavItem icon={Home} label="Home" path="/dashboard" isActive={location.pathname === '/dashboard'} onNavigate={navigate} />
-          <NavItem icon={Inbox} label="Inbox" path="/dashboard/inbox" isActive={location.pathname === '/dashboard/inbox'} onNavigate={navigate} />
-          <NavItem icon={MessageSquare} label="Messages" path="/dashboard/messages" isActive={location.pathname === '/dashboard/messages'} onNavigate={navigate} />
-          <NavItem icon={LayoutGrid} label="Team" path="/dashboard/team" isActive={location.pathname === '/dashboard/team'} onNavigate={navigate} />
+          <NavItem icon={Inbox} label="Inbox" path="/dashboard/inbox" badge={unreadInbox} isActive={location.pathname === '/dashboard/inbox'} onNavigate={navigate} />
+          <NavItem icon={MessageSquare} label="Messages" path="/dashboard/messages" badge={unreadMessages} isActive={location.pathname.startsWith('/dashboard/messages')} onNavigate={navigate} />
+          <NavItem icon={Users} label="Team" path="/dashboard/team" isActive={location.pathname === '/dashboard/team'} onNavigate={navigate} />
           <NavItem icon={Trophy} label="Leaderboard" path="/dashboard/leaderboard" isActive={location.pathname === '/dashboard/leaderboard'} onNavigate={navigate} />
           <NavItem icon={CheckCircle} label="My Tasks" path="/dashboard/my-tasks" isActive={location.pathname === '/dashboard/my-tasks'} onNavigate={navigate} />
         </PrimaryNav>
 
         {favorites.length > 0 && (
           <>
-            <div className="mb-2 px-3 flex items-center justify-between group cursor-pointer text-neutral-500 hover:text-neutral-300">
+            <div className="mb-2 px-3 text-neutral-500">
               <span className="text-xs font-semibold uppercase tracking-[0.08em]">Favorites</span>
-              <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
 
             <div className="mb-4 space-y-1">
@@ -205,17 +216,18 @@ export default function Sidebar() {
                 <div
                   key={project.id}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer group relative text-sm
-                    ${location.pathname.includes(`/list/${project.id}`) ? 'bg-raised text-neutral-50' : 'text-neutral-300 hover:bg-raised'}`}
-                  onClick={() => navigate(`/dashboard/list/${project.id}`)}
+                    ${activeProjectId === project.id ? 'bg-raised text-neutral-50' : 'text-neutral-300 hover:bg-raised'}`}
+                  onClick={() => openProject(project.id)}
                 >
                   <LayoutGrid size={14} className="opacity-70" />
                   <span className="flex-1 truncate">{project.name}</span>
                   <button
+                    aria-label={`Remove ${project.name} from favorites`}
                     onClick={(e) => {
                       e.stopPropagation()
                       toggleProjectFavorite(project.id)
                     }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                   >
                     <Star size={14} className="text-yellow-500 fill-yellow-500" />
                   </button>
@@ -231,8 +243,9 @@ export default function Sidebar() {
             {userRole === 'admin' && (
               <button
                 onClick={(e) => { e.stopPropagation(); setShowNewSpaceInput(true); }}
-                className="hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                className="hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                 title="Add new space"
+                aria-label="Add new space"
               >
                 <Plus size={14} />
               </button>
@@ -277,14 +290,15 @@ export default function Sidebar() {
                     <span className="text-sm truncate">{space.name}</span>
                   </div>
 
-                  <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 flex-shrink-0 transition-opacity">
+                  <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 flex items-center gap-1.5 flex-shrink-0 transition-opacity">
                     {userRole === 'admin' && (
                       <button
+                        aria-label={`Delete space ${space.name}`}
                         onClick={(e) => {
                           e.stopPropagation()
                           confirmAction(
                             'Delete Space',
-                            `Are you sure you want to delete "${space.name}"? Active projects in this space will not be deleted but may become inaccessible.`,
+                            `Delete "${space.name}"? Every project in this space and all of their tasks will be permanently deleted.`,
                             async () => {
                               await deleteSpace(space.id)
                             },
@@ -306,16 +320,17 @@ export default function Sidebar() {
                         <div
                           key={project.id}
                           className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm cursor-pointer group border-l-2 transition-colors
-                           ${location.pathname.includes(`/list/${project.id}`)
+                           ${activeProjectId === project.id
                               ? 'bg-raised text-neutral-50 border-accent-400'
                               : 'text-neutral-300 hover:bg-raised border-transparent'}`}
-                          onClick={() => navigate(`/dashboard/list/${project.id}`)}
+                          onClick={() => openProject(project.id)}
                         >
                           <LayoutGrid size={14} className="opacity-70 flex-shrink-0" />
                           <span className="flex-1 truncate">{project.name}</span>
 
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
+                          <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-1.5">
                             <button
+                              aria-label={project.isFavorite ? `Remove ${project.name} from favorites` : `Add ${project.name} to favorites`}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 toggleProjectFavorite(project.id)
@@ -329,14 +344,15 @@ export default function Sidebar() {
 
                             {userRole === 'admin' && (
                               <button
+                                aria-label={`Delete project ${project.name}`}
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   confirmAction(
                                     'Delete Project',
-                                    `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
+                                    `Delete "${project.name}" and all of its tasks? This action cannot be undone.`,
                                     async () => {
-                                      await deleteProject(project.id)
-                                      if (location.pathname.includes(project.id)) {
+                                      const deleted = await deleteProject(project.id)
+                                      if (deleted && activeProjectId === project.id) {
                                         navigate('/dashboard')
                                       }
                                     },
@@ -372,6 +388,10 @@ export default function Sidebar() {
                       </div>
                     )}
 
+                    {projects.filter(p => p.spaceId === space.id).length === 0 && userRole !== 'admin' && (
+                      <p className="px-2 py-1.5 text-xs text-neutral-600">No projects yet</p>
+                    )}
+
                     {activeSpaceInput !== space.id && userRole === 'admin' && (
                       <button
                         onClick={() => setActiveSpaceInput(space.id)}
@@ -390,26 +410,22 @@ export default function Sidebar() {
       </div>
 
       <div className="p-3 border-t border-raised">
-        {userRole === 'admin' ? (
-          <div className="space-y-1">
+        <div className="space-y-1">
+          {userRole === 'admin' && (
             <button
               onClick={() => navigate('/dashboard/activity')}
               className="w-full flex items-center justify-start gap-2 px-3 py-1.5 text-sm text-neutral-400 hover:bg-raised hover:text-white rounded-md transition-colors"
             >
               <Activity size={14} /> Activity Log
             </button>
-            <button
-              onClick={() => navigate('/dashboard/settings')}
-              className="w-full flex items-center justify-start gap-2 px-3 py-1.5 text-sm text-neutral-400 hover:bg-raised hover:text-white rounded-md transition-colors"
-            >
-              <Settings size={14} /> Settings
-            </button>
-          </div>
-        ) : (
-          <div className="text-center py-1.5 text-xs text-neutral-500 font-medium select-none cursor-default">
-            Employee View
-          </div>
-        )}
+          )}
+          <button
+            onClick={() => navigate('/dashboard/settings')}
+            className="w-full flex items-center justify-start gap-2 px-3 py-1.5 text-sm text-neutral-400 hover:bg-raised hover:text-white rounded-md transition-colors"
+          >
+            <Settings size={14} /> Settings
+          </button>
+        </div>
       </div>
 
       <UserProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} />

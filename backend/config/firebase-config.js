@@ -1,4 +1,6 @@
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
 
 let serviceAccount;
 
@@ -11,13 +13,17 @@ try {
     serviceAccount = require('./serviceAccountKey.json');
   }
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  initializeApp({ credential: cert(serviceAccount) });
   console.log("✅ Firebase Admin initialized successfully.");
 } catch (error) {
   console.error("❌ Firebase Admin Initialization Error:", error.message);
   console.error("Ensure FIREBASE_SERVICE_ACCOUNT env var is set or serviceAccountKey.json exists.");
 }
 
-module.exports = admin;
+// Lazy getters so a failed init surfaces as a per-request error instead of crashing at require time
+module.exports = {
+  auth: () => getAuth(),
+  db: () => getFirestore(),
+  FieldValue,
+  Timestamp,
+};

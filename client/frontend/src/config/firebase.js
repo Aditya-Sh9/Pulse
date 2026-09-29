@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { getAuth, connectAuthEmulator } from 'firebase/auth'
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,18 +18,12 @@ const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 
-// Optional: Use Firebase Emulator for local development (comment out for production)
-// Uncomment the lines below if you're using Firebase Emulator Suite locally
-/*
-if (process.env.NODE_ENV === 'development' && !window.location.hostname.includes('firebase')) {
-  try {
-    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
-    connectFirestoreEmulator(db, 'localhost', 8080)
-  } catch (e) {
-    // Emulator already connected or other error
-  }
+// Opt-in local Firebase Emulator Suite (dev only): set VITE_USE_EMULATORS=true
+// and run `firebase emulators:start --only auth,firestore` from the repo root.
+if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true') {
+  connectAuthEmulator(auth, import.meta.env.VITE_AUTH_EMULATOR_URL || 'http://127.0.0.1:9099', { disableWarnings: true })
+  const [host, port] = (import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080').split(':')
+  connectFirestoreEmulator(db, host, Number(port))
 }
-*/
 
 export default app
-

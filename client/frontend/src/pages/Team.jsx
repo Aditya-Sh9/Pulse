@@ -3,22 +3,28 @@ import { useProject } from '../context/ProjectContext'
 import { useAuth } from '../context/AuthContext'
 import InviteModal from '../components/InviteModal'
 import UserProfileModal from '../components/UserProfileModal'
-import { Search, Filter, MoreHorizontal, Mail, MapPin, Calendar, Plus, Shield, ShieldAlert, Trash2 } from 'lucide-react'
+import { Search, MoreHorizontal, Mail, Plus, Shield, ShieldAlert, Trash2 } from 'lucide-react'
 
 export default function Team() {
-  const { members, updateMemberRole, removeMember } = useProject()
+  const { members, updateMemberRole, removeMember, confirmAction } = useProject()
   const { userRole, currentUser } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const isAdmin = userRole === 'admin'
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
   const [activeMenuId, setActiveMenuId] = useState(null)
   const menuRef = useRef(null)
 
-  const filteredMembers = members.filter(member =>
-    member.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.role?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredMembers = members.filter(member => {
+    const q = searchQuery.toLowerCase()
+    const matchesSearch = !q ||
+      member.name?.toLowerCase().includes(q) ||
+      member.email?.toLowerCase().includes(q)
+    const matchesRole = roleFilter === 'all' ||
+      (roleFilter === 'online' ? member.status === 'online' : (member.role || 'employee') === roleFilter)
+    return matchesSearch && matchesRole
+  })
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -35,11 +41,13 @@ export default function Team() {
     setActiveMenuId(null)
   }
 
-  const handleRemoveMember = (memberId) => {
-    if (window.confirm("Are you sure you want to remove this member?")) {
-      removeMember(memberId)
-    }
+  const handleRemoveMember = (member) => {
     setActiveMenuId(null)
+    confirmAction(
+      'Remove member',
+      `Remove ${member.name || member.email} from the workspace? Their account is deleted and their tasks become unassigned.`,
+      () => removeMember(member.id)
+    )
   }
 
   return (
@@ -47,7 +55,9 @@ export default function Team() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-[26px] leading-tight font-semibold text-neutral-50 tracking-[-0.02em] mb-1">Team Members</h1>
-          <p className="text-sm text-neutral-400">Manage your workspace members and their roles.</p>
+          <p className="text-sm text-neutral-400">
+            {isAdmin ? 'Manage your workspace members and their roles.' : 'Everyone in your workspace. Click a teammate to view their profile.'}
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -55,16 +65,25 @@ export default function Team() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
             <input
               type="text"
+              aria-label="Search members"
               placeholder="Search members..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-card border border-raised rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-accent-500 text-white w-64 transition-colors"
             />
           </div>
-          <button className="flex items-center gap-2 px-3 py-2 bg-card border border-raised rounded-lg text-sm font-medium hover:bg-raised transition-colors">
-            <Filter size={16} /> Filter
-          </button>
-          {userRole === 'admin' && (
+          <select
+            aria-label="Filter members"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="px-3 py-2 bg-card border border-raised rounded-lg text-sm font-medium text-neutral-200 hover:bg-raised focus:outline-none focus:border-accent-500 transition-colors cursor-pointer"
+          >
+            <option value="all">Everyone</option>
+            <option value="admin">Admins</option>
+            <option value="employee">Employees</option>
+            <option value="online">Online now</option>
+          </select>
+          {isAdmin && (
             <button
               onClick={() => setIsInviteModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-accent-600 hover:bg-accent-500 text-white rounded-lg text-sm font-bold transition-colors"
@@ -128,15 +147,19 @@ export default function Team() {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right relative" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => setActiveMenuId(activeMenuId === member.id ? null : member.id)}
-                    className="p-2 text-neutral-500 hover:text-white hover:bg-edge rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                  >
-                    <MoreHorizontal size={18} />
-                  </button>
-                  {activeMenuId === member.id && userRole === 'admin' && member.id !== currentUser.uid && (
+                  {isAdmin && member.id !== currentUser.uid && (
+                    <button
+                      aria-label={`Actions for ${member.name || member.email}`}
+                      aria-haspopup="menu"
+                      onClick={() => setActiveMenuId(activeMenuId === member.id ? null : member.id)}
+                      className="p-2 text-neutral-500 hover:text-white hover:bg-edge rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+                  )}
+                  {activeMenuId === member.id && isAdmin && member.id !== currentUser.uid && (
                     <div ref={menuRef} className="absolute right-10 top-10 w-48 bg-raised border border-edge rounded-lg shadow-2xl z-50 p-1 flex flex-col text-left">
-                      {member.role === 'employee' ? (
+                      {member.role !== 'admin' ? (
                         <button
                           onClick={() => handleUpdateRole(member.id, 'admin')}
                           className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded hover:bg-edge text-accent-400 transition-colors"
@@ -153,7 +176,7 @@ export default function Team() {
                       )}
                       <div className="h-px bg-edge my-1" />
                       <button
-                        onClick={() => handleRemoveMember(member.id)}
+                        onClick={() => handleRemoveMember(member)}
                         className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded hover:bg-edge text-red-400 transition-colors"
                       >
                         <Trash2 size={14} /> Remove Member
@@ -168,7 +191,7 @@ export default function Team() {
 
         {filteredMembers.length === 0 && (
           <div className="p-8 text-center text-neutral-500">
-            No members found matching your search.
+            No members match your search or filter.
           </div>
         )}
       </div>

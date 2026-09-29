@@ -1,20 +1,23 @@
 import React, { useState } from 'react'
 import { useProject } from '../context/ProjectContext'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Inbox as InboxIcon, Trash2, Check, Clock, 
-  MessageSquare, UserCircle, Bell, CheckCheck, Sparkles, EyeOff 
+import {
+  Inbox as InboxIcon, Trash2, Clock,
+  MessageSquare, UserCircle, Bell, CheckCheck, EyeOff, AlarmClock, LifeBuoy, Zap
 } from 'lucide-react'
+import { timeAgo } from '../utils/dates'
+import { openNotification } from '../utils/notifications'
 
 export default function Inbox() {
-  const { notifications, markNotificationAsRead, markNotificationAsUnread, markAllNotificationsAsRead, deleteNotification, tasks, openTaskDrawer } = useProject()
+  const {
+    notifications, markNotificationAsRead, markNotificationAsUnread, markAllNotificationsAsRead,
+    deleteNotification, clearNotifications, confirmAction, tasks, openTaskDrawer, showToast
+  } = useProject()
   const navigate = useNavigate()
-  const [filter, setFilter] = useState('all') // 'all', 'unread', 'read'
+  const [filter, setFilter] = useState('all') // 'all' | 'unread'
 
-  const filteredNotifications = notifications.filter(notif => {
-    if (filter === 'unread') return !notif.read
-    return true
-  })
+  const unreadCount = notifications.filter(n => !n.read).length
+  const filteredNotifications = filter === 'unread' ? notifications.filter(n => !n.read) : notifications
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -24,35 +27,20 @@ export default function Inbox() {
         return <div className="p-2 bg-ember-500/20 text-ember-400 rounded-lg border border-ember-500/30"><MessageSquare size={18} /></div>
       case 'assigned':
         return <div className="p-2 bg-accent-500/20 text-accent-400 rounded-lg border border-accent-500/30"><UserCircle size={18} /></div>
+      case 'reminder':
+        return <div className="p-2 bg-sky-500/20 text-sky-400 rounded-lg border border-sky-500/30"><AlarmClock size={18} /></div>
+      case 'support':
+        return <div className="p-2 bg-red-500/20 text-red-400 rounded-lg border border-red-500/30"><LifeBuoy size={18} /></div>
+      case 'system':
+        return <div className="p-2 bg-yellow-500/20 text-yellow-400 rounded-lg border border-yellow-500/30"><Zap size={18} /></div>
       default:
         return <div className="p-2 bg-neutral-500/20 text-neutral-400 rounded-lg border border-neutral-500/30"><Bell size={18} /></div>
     }
   }
 
   const handleNotificationClick = (notif) => {
-    markNotificationAsRead(notif.id)
-    
-    if (notif.type === 'message') {
-      navigate(`/dashboard/messages/${notif.taskId}`) // taskId holds sender ID for messages
-    } else {
-      const task = tasks.find(t => t.id === notif.taskId)
-      if (task) openTaskDrawer(task)
-    }
-  }
-
-  const getTimeAgo = (timestamp) => {
-    if (!timestamp) return 'Just now'
-    // Handle Firestore Timestamp vs JS Date
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    const seconds = Math.floor((new Date() - date) / 1000)
-    
-    if (seconds < 60) return `Just now`
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
+    if (!notif.read) markNotificationAsRead(notif.id)
+    openNotification(notif, { navigate, tasks, openTaskDrawer, showToast })
   }
 
   return (
@@ -72,14 +60,24 @@ export default function Inbox() {
           </div>
         </div>
 
-        {notifications.filter(n => !n.read).length > 0 && (
-          <button 
-            onClick={markAllNotificationsAsRead}
-            className="text-xs font-bold text-accent-400 hover:text-accent-300 flex items-center gap-2 px-4 py-2 bg-accent-500/5 rounded-lg border border-accent-500/10 transition-all"
-          >
-            <CheckCheck size={14} /> Mark all read
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllNotificationsAsRead}
+              className="text-xs font-bold text-accent-400 hover:text-accent-300 flex items-center gap-2 px-4 py-2 bg-accent-500/5 rounded-lg border border-accent-500/10 transition-all"
+            >
+              <CheckCheck size={14} /> Mark all read
+            </button>
+          )}
+          {notifications.length > 0 && (
+            <button
+              onClick={() => confirmAction('Clear inbox', 'Delete all notifications in your inbox? This cannot be undone.', clearNotifications)}
+              className="text-xs font-bold text-neutral-400 hover:text-red-400 flex items-center gap-2 px-4 py-2 rounded-lg border border-raised hover:border-red-500/30 transition-all"
+            >
+              <Trash2 size={14} /> Clear all
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter Tabs */}
@@ -96,9 +94,9 @@ export default function Inbox() {
               }`}
             >
               {t}
-              {t === 'unread' && notifications.filter(n => !n.read).length > 0 && (
+              {t === 'unread' && unreadCount > 0 && (
                 <span className="ml-2 px-1.5 py-0.5 bg-accent-600 text-[10px] rounded-full text-white">
-                  {notifications.filter(n => !n.read).length}
+                  {unreadCount}
                 </span>
               )}
             </button>
@@ -122,10 +120,13 @@ export default function Inbox() {
               filteredNotifications.map(notif => (
                 <div
                   key={notif.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleNotificationClick(notif)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) handleNotificationClick(notif) }}
                   className={`group relative p-5 rounded-2xl border transition-all cursor-pointer flex items-center gap-5 ${
-                    !notif.read 
-                      ? 'bg-card border-accent-500/30 shadow-lg' 
+                    !notif.read
+                      ? 'bg-card border-accent-500/30 shadow-lg'
                       : 'bg-panel/40 border-raised opacity-70 hover:opacity-100 hover:bg-card'
                   }`}
                 >
@@ -147,13 +148,13 @@ export default function Inbox() {
                     </p>
                     <div className="flex items-center gap-3 mt-2">
                        <span className="text-[10px] text-neutral-600 flex items-center gap-1 font-bold">
-                          <Clock size={10} /> {getTimeAgo(notif.createdAt)}
+                          <Clock size={10} /> {timeAgo(notif.createdAt)}
                        </span>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                     {notif.read && (
                       <button
                         onClick={(e) => {
@@ -162,6 +163,7 @@ export default function Inbox() {
                         }}
                         className="p-2 bg-raised hover:bg-accent-600 text-neutral-400 hover:text-white rounded-lg transition-all"
                         title="Mark as unread"
+                        aria-label="Mark as unread"
                       >
                         <EyeOff size={16} />
                       </button>
@@ -173,6 +175,7 @@ export default function Inbox() {
                       }}
                       className="p-2 bg-raised hover:bg-red-500/20 text-neutral-400 hover:text-red-400 rounded-lg transition-all"
                       title="Delete"
+                      aria-label="Delete notification"
                     >
                       <Trash2 size={16} />
                     </button>

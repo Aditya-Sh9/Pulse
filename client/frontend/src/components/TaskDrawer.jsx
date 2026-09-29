@@ -5,13 +5,43 @@ import { db } from '../config/firebase'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import {
   X, CheckCircle2, Circle, Flag, Calendar, User,
-  AlignLeft, CheckSquare, Plus, Trash2, Clock, MessageSquare, Send, Archive, Pencil
+  AlignLeft, CheckSquare, Plus, Trash2, Clock, Send, Archive, Pencil, Bell, BellOff, Link
 } from 'lucide-react'
+import { toJsDate } from '../utils/dates'
+import { taskUrl, copyToClipboard } from '../utils/links'
 
 const PRIORITIES = {
   High: { color: 'text-red-400 bg-red-400/10 border-red-400/20' },
   Normal: { color: 'text-neutral-300 bg-neutral-500/10 border-neutral-500/25' },
   Low: { color: 'text-neutral-400 bg-neutral-400/10 border-neutral-400/20' }
+}
+
+// Title is saved on blur/Enter, not per keystroke (each save is a Firestore write + audit entry)
+function TaskTitleEditor({ initialTitle, onSave }) {
+  const [title, setTitle] = useState(initialTitle)
+
+  const commit = () => {
+    const next = title.trim()
+    if (next && next !== initialTitle) onSave(next)
+    else setTitle(initialTitle)
+  }
+
+  return (
+    <input
+      type="text"
+      aria-label="Task title"
+      value={title}
+      maxLength={300}
+      onChange={(e) => setTitle(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') { e.preventDefault(); setTitle(initialTitle) }
+      }}
+      className="w-full bg-transparent text-3xl font-bold text-white focus:outline-none placeholder-neutral-600"
+      placeholder="Task Title"
+    />
+  )
 }
 
 function TaskDescriptionEditor({ initialDescription, onSave }) {
@@ -21,7 +51,7 @@ function TaskDescriptionEditor({ initialDescription, onSave }) {
     <textarea
       value={description}
       onChange={(e) => setDescription(e.target.value)}
-      onBlur={() => onSave(description)}
+      onBlur={() => { if (description !== initialDescription) onSave(description) }}
       placeholder="Add more details to this task..."
       className="w-full min-h-[120px] bg-card border border-raised rounded-xl p-4 text-sm text-white focus:outline-none focus:border-accent-500 resize-y transition-colors placeholder-neutral-600"
     />
@@ -31,7 +61,8 @@ function TaskDescriptionEditor({ initialDescription, onSave }) {
 export default function TaskDrawer() {
   const {
     activeTask, isDrawerOpen, closeTaskDrawer, updateTask,
-    addSubtask, toggleSubtask, editSubtask, deleteSubtask, deleteTask, addComment, members
+    addSubtask, toggleSubtask, editSubtask, deleteSubtask, deleteTask, addComment, members,
+    toggleTaskWatch, confirmAction, showToast
   } = useProject()
 
   const { currentUser, userRole } = useAuth()
@@ -77,7 +108,23 @@ export default function TaskDrawer() {
     }
   }, [activeTask?.id])
 
+  // Escape closes the drawer (unless an inline editor handled it first)
+  useEffect(() => {
+    if (!isDrawerOpen) return
+    const onKey = (e) => { if (e.key === 'Escape' && !e.defaultPrevented) closeTaskDrawer() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [isDrawerOpen, closeTaskDrawer])
+
   if (!isDrawerOpen || !activeTask) return null
+
+  const watching = (activeTask.watchers || []).includes(currentUser?.uid)
+  // Employees may only (un)assign themselves, but still see who currently owns the task
+  const assigneeOptions = userRole === 'admin'
+    ? members
+    : members.filter(m => m.id === currentUser?.uid || m.id === activeTask.assigneeId)
+
+  const formatStamp = (value) => toJsDate(value)?.toLocaleString() || 'Just now'
 
   const handleUpdate = (field, value) => {
     updateTask(activeTask.id, { [field]: value })
@@ -123,25 +170,47 @@ export default function TaskDrawer() {
             </button>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                const ok = await copyToClipboard(taskUrl(activeTask))
+                showToast(ok ? 'Task link copied' : 'Could not access the clipboard', ok ? 'success' : 'error')
+              }}
+              className="p-2 text-neutral-500 hover:text-white hover:bg-raised rounded-lg transition-colors"
+              title="Copy link to task"
+              aria-label="Copy link to task"
+            >
+              <Link size={18} />
+            </button>
+            <button
+              onClick={() => toggleTaskWatch(activeTask)}
+              className={`p-2 rounded-lg transition-colors ${watching ? 'text-accent-400 bg-accent-400/10 hover:bg-accent-400/20' : 'text-neutral-500 hover:text-white hover:bg-raised'}`}
+              title={watching ? 'Cancel due-date reminder' : 'Remind me the day before it’s due'}
+              aria-label={watching ? 'Cancel due-date reminder' : 'Remind me the day before it’s due'}
+              aria-pressed={watching}
+            >
+              {watching ? <BellOff size={18} /> : <Bell size={18} />}
+            </button>
             {userRole === 'admin' && (
               <>
                 <button
                   onClick={() => handleUpdate('isArchived', !activeTask.isArchived)}
                   className={`p-2 rounded-lg transition-colors ${activeTask.isArchived ? 'text-accent-400 bg-accent-400/10 hover:bg-accent-400/20' : 'text-neutral-500 hover:text-accent-400 hover:bg-accent-400/10'}`}
                   title={activeTask.isArchived ? "Unarchive Task" : "Archive Task"}
+                  aria-label={activeTask.isArchived ? "Unarchive task" : "Archive task"}
                 >
                   <Archive size={18} />
                 </button>
                 <button
-                  onClick={() => deleteTask(activeTask.id)}
+                  onClick={() => confirmAction('Delete task', `Delete "${activeTask.title}"? This cannot be undone.`, () => deleteTask(activeTask.id))}
                   className="p-2 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                   title="Delete Task"
+                  aria-label="Delete task"
                 >
                   <Trash2 size={18} />
                 </button>
               </>
             )}
-            <button onClick={closeTaskDrawer} className="p-2 text-neutral-500 hover:text-white hover:bg-raised rounded-lg transition-colors">
+            <button onClick={closeTaskDrawer} aria-label="Close task" className="p-2 text-neutral-500 hover:text-white hover:bg-raised rounded-lg transition-colors">
               <X size={20} />
             </button>
           </div>
@@ -153,12 +222,10 @@ export default function TaskDrawer() {
 
             {/* Title */}
             <div>
-              <input
-                type="text"
-                value={activeTask.title || ''}
-                onChange={(e) => updateTask(activeTask.id, { title: e.target.value })}
-                className="w-full bg-transparent text-3xl font-bold text-white focus:outline-none placeholder-neutral-600"
-                placeholder="Task Title"
+              <TaskTitleEditor
+                key={`${activeTask.id}:${activeTask.title}`}
+                initialTitle={activeTask.title || ''}
+                onSave={(nextTitle) => handleUpdate('title', nextTitle)}
               />
             </div>
 
@@ -176,7 +243,7 @@ export default function TaskDrawer() {
                   className="bg-transparent text-sm text-white focus:outline-none cursor-pointer hover:bg-raised px-2 py-1 rounded transition-colors"
                 >
                   <option value="" className="bg-card">Unassigned</option>
-                  {(userRole === 'admin' ? members : members.filter(m => m.id === currentUser?.uid)).map(m => (
+                  {assigneeOptions.map(m => (
                     <option key={m.id} value={m.id} className="bg-card">{m.name || m.email}</option>
                   ))}
                 </select>
@@ -264,7 +331,7 @@ export default function TaskDrawer() {
                         onBlur={() => handleEditSubtaskSubmit(st.id)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleEditSubtaskSubmit(st.id)
-                          if (e.key === 'Escape') setEditingSubtaskId(null)
+                          if (e.key === 'Escape') { e.preventDefault(); setEditingSubtaskId(null) }
                         }}
                         className="flex-1 bg-card text-sm text-white px-2 py-1 rounded border border-accent-500 focus:outline-none"
                       />
@@ -274,7 +341,7 @@ export default function TaskDrawer() {
                       </span>
                     )}
 
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 flex-shrink-0">
+                    <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => {
                           setEditingSubtaskId(st.id);
@@ -303,6 +370,7 @@ export default function TaskDrawer() {
                 <input
                   value={newSubtask}
                   onChange={(e) => setNewSubtask(e.target.value)}
+                  maxLength={200}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && newSubtask.trim()) {
                       addSubtask(activeTask.id, newSubtask.trim())
@@ -348,10 +416,10 @@ export default function TaskDrawer() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-bold text-white">{comment.userName}</span>
                           <span className="text-[10px] text-neutral-500">
-                            {comment.createdAt ? new Date(comment.createdAt.toDate()).toLocaleString() : 'Just now'}
+                            {formatStamp(comment.createdAt)}
                           </span>
                         </div>
-                        <div className="text-sm text-neutral-300 bg-card border border-raised p-3 rounded-tr-xl rounded-b-xl leading-relaxed inline-block">
+                        <div className="text-sm text-neutral-300 bg-card border border-raised p-3 rounded-tr-xl rounded-b-xl leading-relaxed inline-block whitespace-pre-wrap break-words">
                           {comment.text}
                         </div>
                       </div>
@@ -371,7 +439,7 @@ export default function TaskDrawer() {
                           <span className="font-bold text-white">{activity.userName}</span> {activity.action}
                         </p>
                         <p className="text-[10px] text-neutral-500 mt-0.5">
-                          {activity.createdAt ? new Date(activity.createdAt.toDate()).toLocaleString() : 'Just now'}
+                          {formatStamp(activity.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -392,13 +460,16 @@ export default function TaskDrawer() {
                 <div className="flex-1 relative">
                   <input
                     value={newComment}
+                    maxLength={2000}
+                    aria-label="Write a comment"
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Write a comment..."
+                    placeholder="Write a comment… use @name to mention"
                     className="w-full bg-card border border-raised rounded-full pl-4 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-accent-500 transition-colors"
                   />
                   <button
                     type="submit"
                     disabled={!newComment.trim()}
+                    aria-label="Send comment"
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-accent-600 rounded-full text-white hover:bg-accent-500 disabled:opacity-50 transition-colors"
                   >
                     <Send size={14} />

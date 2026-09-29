@@ -1,4 +1,5 @@
 node_modules
 dist
-.env
 npm-debug.log
+# .env is intentionally NOT ignored: Vite inlines VITE_* values at build time and the
+# Firebase web config is public anyway. It only exists in the build stage, not the final nginx image.

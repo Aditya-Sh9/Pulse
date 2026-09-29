@@ -1,16 +1,20 @@
-FROM node:18-alpine
+FROM node:22-alpine
 
+ENV NODE_ENV=production
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files and install production dependencies only
 COPY package*.json ./
-RUN npm install
+RUN npm ci --omit=dev
 
 # Copy application source code
-COPY . .
+COPY --chown=node:node . .
+
+# Don't run the server as root
+USER node
 
 # Expose backend port
 EXPOSE 5000
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Mail, Lock, ArrowRight } from 'lucide-react'
 import { AuthForm, AuthField, AuthError, PrimaryButton, GoogleButton, Divider } from '../components/auth/AuthShell'
 import { useAuthSwitch } from '../components/auth/authSwitch'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, friendlyAuthError } from '../context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -11,23 +11,44 @@ export default function Login() {
   const switchTo = useAuthSwitch()
   // Return to the page that sent the user here (e.g. a deep link from the landing page)
   const redirectTo = location.state?.from?.pathname || '/dashboard'
-  const { login, googleSignIn, error: authError } = useAuth()
+  const { login, googleSignIn, resetPassword } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
+  const [notice, setNotice] = useState('')
+
+  const handleForgotPassword = async () => {
+    setError('')
+    setNotice('')
+    if (!email.trim()) {
+      setError('Enter your email above, then choose “Forgot password?” again.')
+      return
+    }
+    try {
+      await resetPassword(email.trim())
+    } catch (err) {
+      // Don't reveal whether an account exists; only surface actionable errors
+      if (err.code === 'auth/invalid-email' || err.code === 'auth/too-many-requests') {
+        setError(friendlyAuthError(err))
+        return
+      }
+    }
+    setNotice(`If an account exists for ${email.trim()}, a reset link is on its way.`)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setNotice('')
     setIsLoading(true)
 
     try {
       await login(email, password, rememberMe)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.')
+      setError(friendlyAuthError(err, 'Login failed. Please try again.'))
       setIsLoading(false)
     }
   }
@@ -40,7 +61,7 @@ export default function Login() {
       await googleSignIn()
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      setError(err.message || 'Google sign in failed.')
+      setError(friendlyAuthError(err, 'Google sign in failed.'))
       setIsLoading(false)
     }
   }
@@ -96,10 +117,13 @@ export default function Login() {
             />
             Keep me signed in
           </label>
-          <button type="button" className="text-neutral-400 transition-colors hover:text-neutral-100">Forgot password?</button>
+          <button type="button" onClick={handleForgotPassword} className="text-neutral-400 transition-colors hover:text-neutral-100">Forgot password?</button>
         </div>
 
-        {(error || authError) && <AuthError>{error || authError}</AuthError>}
+        {error && <AuthError>{error}</AuthError>}
+        {notice && (
+          <p role="status" className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2.5 text-sm text-emerald-300">{notice}</p>
+        )}
 
         <PrimaryButton type="submit" disabled={isLoading} loading={isLoading} loadingLabel="Logging in…">
           Log in
