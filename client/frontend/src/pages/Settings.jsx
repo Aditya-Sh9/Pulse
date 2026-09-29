@@ -10,7 +10,7 @@ import { toJsDate } from '../utils/dates'
 
 export default function Settings() {
   const { currentUser, logout, userRole, refreshUser, resetPassword } = useAuth()
-  const { members, apiFetch, showToast } = useProject()
+  const { members, apiFetch, showToast, setDesktopNotifications } = useProject()
   const navigate = useNavigate()
 
   const [loading, setLoading] = useState(false)
@@ -101,6 +101,29 @@ export default function Settings() {
     }
   }
 
+  const [prefSaving, setPrefSaving] = useState('')
+  const desktopEnabled = !!userProfile?.desktopNotifications &&
+    typeof Notification !== 'undefined' && Notification.permission === 'granted'
+
+  const handleToggleDesktop = async () => {
+    setPrefSaving('desktop')
+    await setDesktopNotifications(!desktopEnabled)
+    setPrefSaving('')
+  }
+
+  const handleToggleDigest = async () => {
+    const next = !userProfile?.emailDigest
+    setPrefSaving('digest')
+    try {
+      await apiFetch('/api/users/profile', { method: 'PUT', body: JSON.stringify({ emailDigest: next }) })
+      showToast(next ? 'You’ll get a daily email when you have unread updates' : 'Email digest turned off', 'success')
+    } catch (error) {
+      showToast(error.message || 'Could not save your preference', 'error')
+    } finally {
+      setPrefSaving('')
+    }
+  }
+
   const handlePasswordReset = async () => {
     try {
       await resetPassword(currentUser.email)
@@ -163,7 +186,7 @@ export default function Settings() {
                   </div>
                   <div>
                     <label htmlFor="settings-email" className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                      Email Address <Lock size={12} className="text-neutral-600" />
+                      Email Address <Lock size={12} className="text-neutral-500" />
                     </label>
                     <input
                       id="settings-email"
@@ -172,7 +195,7 @@ export default function Settings() {
                       disabled
                       className="w-full bg-base/50 border border-edge/50 rounded-xl px-4 py-3 text-sm text-neutral-500 cursor-not-allowed"
                     />
-                    <p className="text-[10px] text-neutral-600 mt-1.5">Email cannot be changed directly for security reasons.</p>
+                    <p className="text-[11px] text-neutral-500 mt-1.5">Email cannot be changed directly for security reasons.</p>
                   </div>
                 </div>
               </div>
@@ -186,21 +209,42 @@ export default function Settings() {
                 <Bell size={14} /> Preferences
               </div>
 
-              <button
-                type="button"
-                role="switch"
-                aria-checked={formData.notifications}
-                onClick={handleToggleNotifications}
-                className="w-full text-left flex items-center justify-between gap-4 p-4 rounded-xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
-              >
-                <div>
-                  <h4 className="font-bold text-sm text-white mb-1">Task notifications</h4>
-                  <p className="text-xs text-neutral-400">Get an inbox alert when you’re assigned to a task or @mentioned. Saved automatically.</p>
-                </div>
-                <div className={`w-11 h-6 rounded-full p-1 transition-colors flex-shrink-0 ${formData.notifications ? 'bg-accent-600' : 'bg-neutral-700'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${formData.notifications ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                </div>
-              </button>
+              <div className="space-y-3">
+                {[
+                  {
+                    key: 'task', checked: formData.notifications, onToggle: handleToggleNotifications,
+                    title: 'Task notifications', body: 'Get an inbox alert when you’re assigned to a task or @mentioned.'
+                  },
+                  {
+                    key: 'desktop', checked: desktopEnabled, onToggle: handleToggleDesktop,
+                    title: 'Desktop notifications', body: 'Show a system notification for new messages and alerts while Pulse is in a background tab.'
+                  },
+                  {
+                    key: 'digest', checked: !!userProfile?.emailDigest, onToggle: handleToggleDigest,
+                    title: 'Daily email digest', body: 'One email each morning summarising unread notifications from the last 24 hours. Nothing is sent if you’re caught up.'
+                  },
+                ].map(pref => (
+                  <button
+                    key={pref.key}
+                    type="button"
+                    role="switch"
+                    aria-checked={pref.checked}
+                    aria-busy={prefSaving === pref.key}
+                    disabled={prefSaving === pref.key}
+                    onClick={pref.onToggle}
+                    className="w-full text-left flex items-center justify-between gap-4 p-4 rounded-xl border border-white/5 bg-white/5 cursor-pointer hover:bg-white/10 transition-colors disabled:opacity-70"
+                  >
+                    <div>
+                      <h4 className="font-bold text-sm text-white mb-1">{pref.title}</h4>
+                      <p className="text-xs text-neutral-400 leading-relaxed">{pref.body}</p>
+                    </div>
+                    <div className={`w-11 h-6 rounded-full p-1 transition-colors flex-shrink-0 ${pref.checked ? 'bg-accent-600' : 'bg-neutral-700'}`}>
+                      <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${pref.checked ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                    </div>
+                  </button>
+                ))}
+                <p className="text-[11px] text-neutral-400">Preferences save automatically.</p>
+              </div>
             </div>
 
             {/* Status Messages */}

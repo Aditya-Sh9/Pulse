@@ -17,6 +17,7 @@ const userRoutes = require('./routes/userRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const spaceRoutes = require('./routes/spaceRoutes');
 const inviteRoutes = require('./routes/inviteRoutes');
+const leaderboardRoutes = require('./routes/leaderboardRoutes');
 
 require('./cron/cleanup');
 
@@ -51,6 +52,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/spaces', spaceRoutes);
 app.use('/api/invite', inviteRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 

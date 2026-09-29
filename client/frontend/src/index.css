@@ -18,7 +18,9 @@
   --color-app: #0E1324;
   --color-app-2: #171D33;
 
-  /* ---- App (dark) surfaces: warm neutral, faint green undertone ---- */
+  /* ---- App (dark) surfaces: warm neutral, faint green undertone ----
+     Heads-up: because a color is named "base", Tailwind's `text-base` also emits
+     `color: var(--color-base)` (near-black). Use `text-[16px] leading-6` for 16px text. */
   --color-base: #0C0D0C;
   --color-panel: #111311;
   --color-card: #161816;

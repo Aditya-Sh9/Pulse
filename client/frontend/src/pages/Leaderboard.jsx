@@ -1,9 +1,13 @@
-import React, { useState, useMemo, useRef } from 'react'
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'
+import { db } from '../config/firebase'
+import Modal from '../components/Modal'
+import { toJsDate } from '../utils/dates'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useProject } from '../context/ProjectContext'
 import { useAuth } from '../context/AuthContext'
-import { Trophy, Medal, Zap, Star, Gift, RotateCcw, X, AlertTriangle, Search, Activity, ArrowUpDown, ChevronDown } from 'lucide-react'
+import { Trophy, Medal, Zap, Star, Gift, RotateCcw, X, AlertTriangle, Search, Activity, ArrowUpDown, ChevronDown, History } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
 gsap.registerPlugin(useGSAP)
@@ -12,7 +16,7 @@ const MAX_XP_ADJUSTMENT = 10000
 
 export default function Leaderboard() {
   const { userRole } = useAuth()
-  const { members, adjustProductivityScore, resetAllProductivityScores, xpActivities } = useProject()
+  const { members, adjustProductivityScore, closeSeason, xpActivities } = useProject()
   const root = useRef(null)
 
   // Modals & Controls State
@@ -26,6 +30,23 @@ export default function Leaderboard() {
   const [xpAmount, setXpAmount] = useState('50')
   const [xpReason, setXpReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Seasons
+  const [tab, setTab] = useState('current') // 'current' | 'history'
+  const [seasons, setSeasons] = useState([])
+  const [seasonsLoaded, setSeasonsLoaded] = useState(false)
+  const [selectedSeasonId, setSelectedSeasonId] = useState(null)
+  const [seasonName, setSeasonName] = useState('')
+  const [closingSeason, setClosingSeason] = useState(false)
+
+  useEffect(() => {
+    const q = query(collection(db, 'seasons'), orderBy('endedAt', 'desc'), limit(24))
+    return onSnapshot(q, (snap) => {
+      setSeasons(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setSeasonsLoaded(true)
+    }, () => setSeasonsLoaded(true))
+  }, [])
+  const selectedSeason = seasons.find(s => s.id === selectedSeasonId) || seasons[0]
 
   const parsedXp = Number.parseInt(xpAmount, 10)
   const xpValid = Number.isFinite(parsedXp) && parsedXp !== 0 && Math.abs(parsedXp) <= MAX_XP_ADJUSTMENT
@@ -80,12 +101,12 @@ export default function Leaderboard() {
     })
   }, { scope: root, dependencies: [searchQuery, sortBy], revertOnUpdate: true })
 
-  const closeManageModal = () => {
+  const closeManageModal = useCallback(() => {
     setShowManageModal(false)
     setSelectedUserId('')
     setXpAmount('50')
     setXpReason('')
-  }
+  }, [])
 
   const handleAwardXP = async (e) => {
     e.preventDefault()
@@ -109,10 +130,17 @@ export default function Leaderboard() {
     closeManageModal()
   }
 
-  const handleResetSeason = () => {
-    resetAllProductivityScores()
-    setShowResetConfirm(false)
+  const handleResetSeason = async () => {
+    setClosingSeason(true)
+    const ok = await closeSeason(seasonName.trim())
+    setClosingSeason(false)
+    if (ok) {
+      setShowResetConfirm(false)
+      setSeasonName('')
+      setTab('current')
+    }
   }
+  const closeResetModal = useCallback(() => setShowResetConfirm(false), [])
 
   return (
     <div ref={root} className="p-8 h-full flex flex-col bg-base text-white overflow-y-auto relative">
@@ -149,6 +177,71 @@ export default function Leaderboard() {
 
         {/* Main Content (Podium & List) */}
         <div className="xl:col-span-3 space-y-8">
+          <div role="tablist" aria-label="Leaderboard" className="inline-flex p-1 rounded-xl bg-card border border-raised">
+            {[['current', 'Current season', Trophy], ['history', 'Past seasons', History]].map(([id, label, Icon]) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === id ? 'bg-raised text-white' : 'text-neutral-400 hover:text-white'}`}
+              >
+                <Icon size={15} aria-hidden="true" /> {label}
+                {id === 'history' && seasons.length > 0 && <span className="text-xs text-neutral-400 tabular-nums">{seasons.length}</span>}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'history' ? (
+            <section aria-label="Past seasons" className="bg-card rounded-2xl border border-raised overflow-hidden">
+              {!seasonsLoaded ? (
+                <p className="p-10 text-center text-neutral-400 text-sm" role="status">Loading seasons…</p>
+              ) : seasons.length === 0 ? (
+                <div className="p-14 text-center">
+                  <History size={40} className="mx-auto mb-4 text-neutral-500" aria-hidden="true" />
+                  <p className="text-lg font-medium text-neutral-200">No past seasons yet</p>
+                  <p className="text-sm text-neutral-400 mt-1">When an admin starts a new season, the final standings are archived here.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col md:flex-row">
+                  <nav aria-label="Seasons" className="md:w-56 border-b md:border-b-0 md:border-r border-raised p-2 flex md:flex-col gap-1 overflow-x-auto">
+                    {seasons.map(season => (
+                      <button
+                        key={season.id}
+                        aria-current={selectedSeason?.id === season.id ? 'true' : undefined}
+                        onClick={() => setSelectedSeasonId(season.id)}
+                        className={`text-left px-3 py-2 rounded-lg text-sm whitespace-nowrap ${selectedSeason?.id === season.id ? 'bg-raised text-white' : 'text-neutral-300 hover:bg-raised/60'}`}
+                      >
+                        <span className="block font-semibold">{season.name}</span>
+                        <span className="block text-xs text-neutral-400">{toJsDate(season.endedAt)?.toLocaleDateString() || 'Just now'}</span>
+                      </button>
+                    ))}
+                  </nav>
+                  {selectedSeason && (
+                    <div className="flex-1 min-w-0">
+                      <div className="px-5 py-4 border-b border-raised">
+                        <h2 className="text-lg font-bold text-white">{selectedSeason.name}</h2>
+                        <p className="text-xs text-neutral-400">Closed by {selectedSeason.endedBy || 'an admin'} · {selectedSeason.standings?.length || 0} members</p>
+                      </div>
+                      <ol className="divide-y divide-raised/60">
+                        {(selectedSeason.standings || []).map((row, i) => (
+                          <li key={row.uid} className="flex items-center justify-between px-5 py-3">
+                            <div className="flex items-center gap-4 min-w-0">
+                              <span className={`w-8 text-center font-bold tabular-nums ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-neutral-300' : i === 2 ? 'text-orange-400' : 'text-neutral-500'}`}>
+                                {i < 3 ? <Medal size={18} className="inline" aria-label={`Rank ${i + 1}`} /> : `#${i + 1}`}
+                              </span>
+                              <span className="text-neutral-100 truncate">{row.name}</span>
+                            </div>
+                            <span className="font-semibold text-accent-300 tabular-nums">{row.score} XP</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          ) : (<>
 
           {/* Podium for Absolute Top 3 (Only show if default view) */}
           {isDefaultView && absoluteTopThree.length > 0 && (
@@ -162,7 +255,7 @@ export default function Leaderboard() {
                     </div>
                     <div className="absolute -bottom-3 -right-2 bg-neutral-200 text-neutral-900 w-8 h-8 rounded-full flex items-center justify-center font-bold border-4 border-base z-20 shadow-lg">2</div>
                   </div>
-                  <p className="font-bold text-sm sm:text-base truncate w-full text-center text-neutral-200">{absoluteTopThree[1].name}</p>
+                  <p className="font-bold text-sm sm:text-[16px] sm:leading-6 truncate w-full text-center text-neutral-200">{absoluteTopThree[1].name}</p>
                   <div className="flex items-center gap-1 text-neutral-300 font-bold text-xs sm:text-sm mb-3 bg-neutral-800/50 px-3 py-1 rounded-full mt-1 border border-neutral-700/50">
                     <Zap size={14} className="fill-neutral-400 text-neutral-400" /> {absoluteTopThree[1].productivityScore || 0}
                   </div>
@@ -185,7 +278,7 @@ export default function Leaderboard() {
                     <div className="absolute -bottom-4 -right-2 bg-yellow-400 text-yellow-950 w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 border-base z-20 shadow-lg text-lg">1</div>
                   </div>
                   <p className="font-extrabold text-lg sm:text-xl truncate w-full text-center text-yellow-50">{absoluteTopThree[0].name}</p>
-                  <div className="flex items-center gap-1.5 text-yellow-300 font-bold text-sm sm:text-base mb-4 bg-yellow-900/40 px-4 py-1.5 rounded-full mt-1 border border-yellow-500/30">
+                  <div className="flex items-center gap-1.5 text-yellow-300 font-bold text-sm sm:text-[16px] sm:leading-6 mb-4 bg-yellow-900/40 px-4 py-1.5 rounded-full mt-1 border border-yellow-500/30">
                     <Zap size={16} className="fill-yellow-400 text-yellow-400" /> {absoluteTopThree[0].productivityScore || 0} XP
                   </div>
                   <div className="w-full bg-card h-44 rounded-t-xl border border-b-0 border-raised border-t-2 border-t-yellow-400/80 flex items-start justify-center pt-6 transition-colors duration-300 group-hover:bg-raised">
@@ -203,7 +296,7 @@ export default function Leaderboard() {
                     </div>
                     <div className="absolute -bottom-3 -right-2 bg-orange-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-4 border-base z-20 shadow-lg">3</div>
                   </div>
-                  <p className="font-bold text-sm sm:text-base truncate w-full text-center text-orange-100">{absoluteTopThree[2].name}</p>
+                  <p className="font-bold text-sm sm:text-[16px] sm:leading-6 truncate w-full text-center text-orange-100">{absoluteTopThree[2].name}</p>
                   <div className="flex items-center gap-1 text-orange-300 font-bold text-xs sm:text-sm mb-3 bg-orange-950/60 px-3 py-1 rounded-full mt-1 border border-orange-800/50">
                     <Zap size={14} className="fill-orange-400 text-orange-400" /> {absoluteTopThree[2].productivityScore || 0}
                   </div>
@@ -289,6 +382,8 @@ export default function Leaderboard() {
               </div>
             )}
           </div>
+
+          </>)}
         </div>
 
         {/* Sidebar: Activity Ticker */}
@@ -315,7 +410,7 @@ export default function Leaderboard() {
                       <p className="text-sm text-neutral-300 font-medium group-hover:text-white transition-colors">
                         <span className="font-bold text-accent-400">{activity.userName}</span> {activity.action}
                       </p>
-                      <span className="text-xs text-neutral-600 mt-2 block font-medium">
+                      <span className="text-xs text-neutral-500 mt-2 block font-medium">
                         {new Date(activity.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -323,7 +418,7 @@ export default function Leaderboard() {
                 ))
               ) : (
                 <div className="text-center py-8 text-neutral-500 text-sm">
-                  <Activity size={24} className="mx-auto mb-3 text-neutral-600 opacity-50" />
+                  <Activity size={24} className="mx-auto mb-3 text-neutral-500 opacity-50" />
                   No recent XP activity.
                 </div>
               )}
@@ -334,27 +429,25 @@ export default function Leaderboard() {
 
       {/* --- ADMIN MODALS --- */}
       {showManageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeManageModal} />
-          <form
-            onSubmit={handleAwardXP}
-            onKeyDown={(e) => { if (e.key === 'Escape') closeManageModal() }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="manage-xp-title"
-            className="relative z-10 w-full max-w-md bg-card border border-edge rounded-2xl p-6 animate-in zoom-in-95 duration-200"
-          >
+        <Modal
+          as="form"
+          onClose={closeManageModal}
+          onSubmit={handleAwardXP}
+          labelledBy="manage-xp-title"
+          z="z-50"
+          className="max-w-md bg-card border border-edge rounded-2xl p-6"
+        >
             <div className="flex justify-between items-center mb-6">
               <h3 id="manage-xp-title" className="text-xl font-bold text-white flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-accent-500/20 flex items-center justify-center border border-accent-500/30">
-                  <Gift className="text-accent-400" size={20} />
+                  <Gift className="text-accent-400" size={20} aria-hidden="true" />
                 </div>
                 Manage XP
               </h3>
-              <button type="button" aria-label="Close" onClick={closeManageModal} className="w-8 h-8 flex items-center justify-center rounded-full bg-base text-neutral-500 hover:text-white hover:bg-red-500/20 transition-colors"><X size={16} /></button>
+              <button type="button" aria-label="Close" onClick={closeManageModal} className="w-8 h-8 flex items-center justify-center rounded-full bg-base text-neutral-400 hover:text-white hover:bg-red-500/20 transition-colors"><X size={16} /></button>
             </div>
 
-            <div className="space-y-6">
+          <div className="space-y-6">
               <div>
                 <label htmlFor="xp-member" className="text-xs text-accent-400 font-semibold uppercase tracking-[0.08em] mb-2 block">1. Select Member</label>
                 <select
@@ -409,7 +502,7 @@ export default function Leaderboard() {
                   placeholder="e.g. Heroic bug fixing before deployment!"
                   className="w-full bg-base border border-edge text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-shadow h-24 resize-none"
                 />
-                <p className="text-[10px] text-neutral-500 mt-1.5 font-medium">This will be broadcasted to their notifications and the live ticker.</p>
+                <p className="text-[11px] text-neutral-500 mt-1.5 font-medium">This will be broadcasted to their notifications and the live ticker.</p>
               </div>
             </div>
 
@@ -425,44 +518,40 @@ export default function Leaderboard() {
                 </span>
               </button>
             </div>
-          </form>
-        </div>
+        </Modal>
       )}
 
       {/* Reset Season Confirmation Modal */}
       {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowResetConfirm(false)} />
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="reset-season-title"
-            onKeyDown={(e) => { if (e.key === 'Escape') setShowResetConfirm(false) }}
-            className="relative z-10 w-full max-w-md bg-card border border-red-500/30 rounded-2xl p-6 animate-in zoom-in-95 duration-200"
-          >
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30 text-red-400">
-                <AlertTriangle size={24} />
-              </div>
-              <div>
-                <h3 id="reset-season-title" className="text-xl font-bold text-white">Start New Season?</h3>
-                <p className="text-sm text-red-400 font-bold">WARNING: Destructive Action</p>
-              </div>
+        <Modal onClose={closeResetModal} role="alertdialog" labelledBy="reset-season-title" z="z-50" className="max-w-md bg-card border border-red-500/30 rounded-2xl p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30 text-red-400">
+              <AlertTriangle size={24} aria-hidden="true" />
             </div>
-            <div className="bg-base border border-edge rounded-xl p-4 mb-6">
-              <p className="text-neutral-300 text-sm leading-relaxed">
-                This will clear <strong className="text-white">all XP points</strong> for <strong className="text-white">every member</strong> and start a brand new season globally.
-                This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button autoFocus onClick={() => setShowResetConfirm(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-neutral-400 hover:bg-raised hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleResetSeason} className="px-6 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-500 transition-all shadow-red-600/20">
-                Yes, Reset Everything
-              </button>
+            <div>
+              <h3 id="reset-season-title" className="text-xl font-bold text-white">Start a new season?</h3>
+              <p className="text-sm text-red-400 font-bold">Everyone's XP goes back to 0</p>
             </div>
           </div>
-        </div>
+          <p className="text-neutral-300 text-sm leading-relaxed mb-4">
+            The current standings are archived under <strong className="text-white">Past seasons</strong> first, so nothing is lost.
+          </p>
+          <label htmlFor="season-name" className="text-xs text-neutral-400 font-semibold uppercase tracking-[0.08em] mb-2 block">Name this season (optional)</label>
+          <input
+            id="season-name"
+            value={seasonName}
+            maxLength={60}
+            onChange={(e) => setSeasonName(e.target.value)}
+            placeholder={`Season ${seasons.length + 1}`}
+            className="w-full bg-base border border-edge text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-accent-500 mb-6 placeholder-neutral-500"
+          />
+          <div className="flex justify-end gap-3">
+            <button onClick={closeResetModal} className="px-5 py-2.5 rounded-xl text-sm font-bold text-neutral-300 hover:bg-raised hover:text-white transition-colors">Cancel</button>
+            <button onClick={handleResetSeason} disabled={closingSeason} className="px-6 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-500 disabled:opacity-60 transition-all">
+              {closingSeason ? 'Archiving…' : 'Archive & reset'}
+            </button>
+          </div>
+        </Modal>
       )}
 
     </div>

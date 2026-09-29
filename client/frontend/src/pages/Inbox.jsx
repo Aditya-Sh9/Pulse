@@ -7,11 +7,12 @@ import {
 } from 'lucide-react'
 import { timeAgo } from '../utils/dates'
 import { openNotification } from '../utils/notifications'
+import { SkeletonRows } from '../components/Skeleton'
 
 export default function Inbox() {
   const {
     notifications, markNotificationAsRead, markNotificationAsUnread, markAllNotificationsAsRead,
-    deleteNotification, clearNotifications, confirmAction, tasks, openTaskDrawer, showToast
+    deleteNotification, clearNotifications, confirmAction, tasks, openTaskDrawer, showToast, loading
   } = useProject()
   const navigate = useNavigate()
   const [filter, setFilter] = useState('all') // 'all' | 'unread'
@@ -49,7 +50,7 @@ export default function Inbox() {
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-10 pointer-events-none"></div>
 
       {/* Header */}
-      <div className="relative z-10 bg-card border-b border-raised px-8 py-6 flex items-center justify-between">
+      <div className="relative z-10 bg-card border-b border-raised px-4 sm:px-8 py-5 sm:py-6 flex flex-wrap gap-3 items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-accent-600/10 rounded-xl border border-accent-500/20">
             <InboxIcon size={22} className="text-accent-400" />
@@ -81,7 +82,7 @@ export default function Inbox() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="relative z-10 px-8 py-2 border-b border-raised bg-panel">
+      <div className="relative z-10 px-4 sm:px-8 py-2 border-b border-raised bg-panel">
         <div className="flex items-center gap-6">
           {['all', 'unread'].map((t) => (
             <button
@@ -95,7 +96,7 @@ export default function Inbox() {
             >
               {t}
               {t === 'unread' && unreadCount > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 bg-accent-600 text-[10px] rounded-full text-white">
+                <span className="ml-2 px-1.5 py-0.5 bg-accent-600 text-[11px] rounded-full text-white">
                   {unreadCount}
                 </span>
               )}
@@ -108,7 +109,7 @@ export default function Inbox() {
       <main className="relative z-10 flex-1 overflow-y-auto custom-scrollbar">
         <div className="max-w-4xl mx-auto py-6 px-4">
           <div className="space-y-2">
-            {filteredNotifications.length === 0 ? (
+            {loading.notifications ? <SkeletonRows rows={5} label="Loading notifications" /> : filteredNotifications.length === 0 ? (
               <div className="py-20 text-center flex flex-col items-center justify-center">
                 <div className="w-20 h-20 bg-card rounded-full flex items-center justify-center border border-raised mb-4 shadow-2xl">
                    <Clock size={32} className="text-neutral-700" />
@@ -147,7 +148,7 @@ export default function Inbox() {
                       {notif.message}
                     </p>
                     <div className="flex items-center gap-3 mt-2">
-                       <span className="text-[10px] text-neutral-600 flex items-center gap-1 font-bold">
+                       <span className="text-[11px] text-neutral-500 flex items-center gap-1 font-bold">
                           <Clock size={10} /> {timeAgo(notif.createdAt)}
                        </span>
                     </div>

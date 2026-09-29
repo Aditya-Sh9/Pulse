@@ -21,6 +21,11 @@ service cloud.firestore {
       return s in ['TO DO', 'IN PROGRESS', 'COMPLETE'];
     }
 
+    // Written only by the backend (status endpoint): completion, XP and recurrence bookkeeping
+    function serverTaskFields() {
+      return ['completedBy', 'completedAt', 'xpAwarded', 'recurrenceSpawned', 'recurrenceOf'];
+    }
+
     match /spaces/{spaceId} {
       allow read: if signedIn();
       // Only admins can create or update spaces; deletes go through the backend (cascade)
@@ -45,13 +50,12 @@ service cloud.firestore {
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 300
         && validStatus(request.resource.data.status)
-        && !('completedBy' in request.resource.data)
-        && !('completedAt' in request.resource.data)
+        && !request.resource.data.keys().hasAny(serverTaskFields())
         && (isAdmin() || request.resource.data.assigneeId in ['', request.auth.uid]);
 
       // Status, completion and XP bookkeeping are server-only (PATCH /api/tasks/:id/status)
       allow update: if signedIn()
-        && !changed().hasAny(['status', 'completedBy', 'completedAt', 'createdBy'])
+        && !changed().hasAny(serverTaskFields().concat(['status', 'createdBy']))
         && (isAdmin()
             || !changed().hasAny(['assigneeId'])
             || request.resource.data.assigneeId in ['', request.auth.uid]);
@@ -85,14 +89,20 @@ service cloud.firestore {
         && request.resource.data.get('productivityScore', 0) == 0
         && request.resource.data.keys().hasOnly(
              ['uid', 'email', 'name', 'role', 'status', 'createdAt', 'updatedAt',
-              'productivityScore', 'notifications', 'favoriteProjects']);
+              'productivityScore', 'notifications', 'favoriteProjects', 'savedFilters']);
 
       // Users may edit their own profile fields, but never their role or XP
       allow update: if isAdmin()
         || (request.auth.uid == userId
-            && changed().hasOnly(['name', 'notifications', 'status', 'updatedAt', 'favoriteProjects']));
+            && changed().hasOnly(['name', 'notifications', 'status', 'updatedAt', 'favoriteProjects', 'savedFilters', 'desktopNotifications']));
 
       allow delete: if isAdmin();
+    }
+
+    // Archived leaderboard seasons are written by the backend only
+    match /seasons/{seasonId} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     match /notifications/{notifId} {

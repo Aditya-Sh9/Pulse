@@ -9,7 +9,7 @@ const MenuItem = ({ icon: Icon, label, onClick, danger }) => (
     type="button"
     role="menuitem"
     onClick={(e) => { e.stopPropagation(); onClick() }}
-    className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-edge transition-colors ${danger ? 'text-red-400 hover:text-red-300' : 'text-neutral-300'}`}
+    className={`w-full flex items-center gap-2 px-2.5 py-2 text-sm rounded hover:bg-edge transition-colors ${danger ? 'text-red-400 hover:text-red-300' : 'text-neutral-300'}`}
   >
     <Icon size={14} className={danger ? 'text-red-400' : 'text-neutral-500'} /> {label}
   </button>
@@ -19,7 +19,7 @@ const MenuItem = ({ icon: Icon, label, onClick, danger }) => (
 export default function TaskActionsMenu({ task, onClose, onRename, className = 'right-0 top-8' }) {
   const ref = useRef(null)
   const { currentUser, userRole } = useAuth()
-  const { openTaskDrawer, duplicateTask, toggleTaskWatch, updateTask, deleteTask, confirmAction, showToast } = useProject()
+  const { openTaskDrawer, duplicateTask, toggleTaskWatch, setTaskArchived, deleteTask, confirmAction, showToast } = useProject()
   const isAdmin = userRole === 'admin'
   const watching = (task.watchers || []).includes(currentUser?.uid)
 
@@ -49,9 +49,9 @@ export default function TaskActionsMenu({ task, onClose, onRename, className = '
       className={`absolute w-60 bg-raised border border-edge rounded-lg shadow-2xl z-50 p-1.5 flex flex-col gap-1 cursor-default ${className}`}
     >
       <div className="grid grid-cols-3 gap-1 mb-1">
-        <button type="button" onClick={run(() => copy(taskUrl(task), 'Task link'))} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><Link size={12} /> Link</button>
-        <button type="button" onClick={run(() => copy(task.id, 'Task ID'))} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><Copy size={12} /> ID</button>
-        <button type="button" onClick={run(() => openTaskDrawer(task))} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[10px] text-neutral-300"><ExternalLink size={12} /> Open</button>
+        <button type="button" onClick={run(() => copy(taskUrl(task), 'Task link'))} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[11px] text-neutral-300"><Link size={12} /> Link</button>
+        <button type="button" onClick={run(() => copy(task.id, 'Task ID'))} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[11px] text-neutral-300"><Copy size={12} /> ID</button>
+        <button type="button" onClick={run(() => openTaskDrawer(task))} className="flex items-center justify-center gap-1 bg-edge hover:bg-edge-2 py-1.5 rounded text-[11px] text-neutral-300"><ExternalLink size={12} /> Open</button>
       </div>
       <div className="h-px bg-edge my-0.5" />
       <MenuItem icon={Pencil} label="Rename" onClick={run(onRename || (() => openTaskDrawer(task)))} />
@@ -59,13 +59,13 @@ export default function TaskActionsMenu({ task, onClose, onRename, className = '
       <MenuItem icon={watching ? BellOff : Bell} label={watching ? 'Cancel reminder' : 'Remind me'} onClick={run(() => toggleTaskWatch(task))} />
       {isAdmin && (
         <>
-          <MenuItem icon={Archive} label={task.isArchived ? 'Unarchive' : 'Archive'} onClick={run(() => updateTask(task.id, { isArchived: !task.isArchived }))} />
+          <MenuItem icon={Archive} label={task.isArchived ? 'Unarchive' : 'Archive'} onClick={run(() => setTaskArchived(task, !task.isArchived))} />
           <div className="h-px bg-edge my-0.5" />
           <MenuItem
             icon={Trash2}
             label="Delete"
             danger
-            onClick={run(() => confirmAction('Delete task', `Delete "${task.title}"? This cannot be undone.`, () => deleteTask(task.id)))}
+            onClick={run(() => confirmAction('Delete task', `Delete "${task.title}"? You'll have a few seconds to undo.`, () => deleteTask(task.id)))}
           />
         </>
       )}

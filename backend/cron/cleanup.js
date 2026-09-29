@@ -1,11 +1,9 @@
 const cron = require('node-cron');
 const admin = require('../config/firebase-config');
-
-// Due dates are stored as local calendar days (YYYY-MM-DD), so jobs run in the workspace's timezone
-const timezone = process.env.APP_TIMEZONE || 'Asia/Kolkata';
-
-const dateKeyInZone = (date) =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+const { sendMail, mailConfigured } = require('../config/mailer');
+const { escapeHtml } = require('../utils/userInfo');
+const { timezone, dateKeyInZone, addToDateKey } = require('../utils/time');
+const allowedOrigins = require('../config/allowedOrigins');
 
 // Run every night at midnight to delete read notifications older than 7 days
 cron.schedule('0 0 * * *', async () => {
@@ -34,8 +32,7 @@ cron.schedule('0 0 * * *', async () => {
 cron.schedule('0 8 * * *', async () => {
   try {
     const db = admin.db();
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const snapshot = await db.collection('tasks').where('dueDate', '==', dateKeyInZone(tomorrow)).get();
+    const snapshot = await db.collection('tasks').where('dueDate', '==', addToDateKey(dateKeyInZone(), 'daily')).get();
     if (snapshot.empty) return;
 
     const writer = db.bulkWriter();
@@ -63,3 +60,50 @@ cron.schedule('0 8 * * *', async () => {
     console.error('Reminder cron error:', error.message);
   }
 }, { timezone });
+
+// Daily email digest of unread notifications, for users who opted in (Settings → Email digest)
+const sendDigests = async () => {
+  if (!mailConfigured()) return;
+  const db = admin.db();
+  const since = admin.Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  const appUrl = allowedOrigins[0];
+
+  const users = await db.collection('users').where('emailDigest', '==', true).get();
+  for (const userDoc of users.docs) {
+    const user = userDoc.data();
+    if (!user.email) continue;
+    try {
+      const unread = await db.collection('notifications')
+        .where('userId', '==', userDoc.id)
+        .where('read', '==', false)
+        .where('createdAt', '>', since)
+        .orderBy('createdAt', 'desc')
+        .limit(20)
+        .get();
+      if (unread.empty) continue;
+
+      const items = unread.docs.map(n => {
+        const d = n.data();
+        return `<li style="margin:0 0 10px;color:#cbd5e1;"><strong style="color:#fff;">${escapeHtml(d.senderName || 'Pulse')}</strong> ${escapeHtml(d.message)}</li>`;
+      }).join('');
+
+      await sendMail({
+        to: user.email,
+        subject: `You have ${unread.size} unread update${unread.size === 1 ? '' : 's'} in Pulse`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#161816;color:#fff;border-radius:12px;padding:28px;border:1px solid #2D312D;">
+            <h2 style="margin:0 0 16px;color:#45C1AA;">Your Pulse digest</h2>
+            <ul style="padding-left:18px;margin:0 0 24px;">${items}</ul>
+            <a href="${escapeHtml(appUrl)}/dashboard/inbox" style="background:#1C8575;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;">Open Inbox</a>
+            <p style="color:#858A83;font-size:12px;margin-top:24px;">You can turn off this email in Pulse → Settings.</p>
+          </div>`
+      });
+    } catch (error) {
+      console.error(`Digest failed for ${userDoc.id}:`, error.message);
+    }
+  }
+};
+
+cron.schedule('0 9 * * *', () => sendDigests().catch(e => console.error('Digest cron error:', e.message)), { timezone });
+
+module.exports = { sendDigests };

@@ -1,22 +1,13 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, Mail, Shield, Zap, Circle, MessageSquare } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import Modal from './Modal'
 
 export default function UserProfileModal({ user, onClose }) {
     const navigate = useNavigate()
     const { currentUser } = useAuth()
     const userId = user?.id || user?.uid
-
-    // Close on Escape key (only while open)
-    useEffect(() => {
-        if (!user) return
-        const handleKeyDown = (e) => {
-            if (e.key === 'Escape') onClose()
-        }
-        document.addEventListener('keydown', handleKeyDown)
-        return () => document.removeEventListener('keydown', handleKeyDown)
-    }, [user, onClose])
 
     if (!user) return null
 
@@ -29,17 +20,7 @@ export default function UserProfileModal({ user, onClose }) {
     const roleColor = user.role === 'admin' ? 'text-accent-400 bg-accent-500/10 border-accent-500/30' : 'text-neutral-300 bg-neutral-500/10 border-neutral-500/30'
 
     return (
-        <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-            onClick={onClose}
-        >
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-label={`${user.name || 'User'} profile`}
-                className="relative w-full max-w-sm bg-panel border border-raised rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-                onClick={e => e.stopPropagation()}
-            >
+        <Modal onClose={onClose} label={`${user.name || 'User'} profile`} className="max-w-sm bg-panel border border-raised rounded-2xl shadow-2xl overflow-hidden">
                 {/* Abstract Background Decoration */}
 
                 {/* Header Action */}
@@ -87,7 +68,7 @@ export default function UserProfileModal({ user, onClose }) {
                         <div className="bg-base/60 border border-raised rounded-xl p-3 flex flex-col items-center justify-center">
                             <Zap size={16} className="text-yellow-500 mb-1.5" />
                             <div className="text-xs font-semibold uppercase tracking-[0.08em] text-neutral-300">
-                                <span className="text-white text-base mr-1">{user.productivityScore || 0}</span> XP
+                                <span className="text-white text-[16px] leading-6 mr-1">{user.productivityScore || 0}</span> XP
                             </div>
                         </div>
 
@@ -109,7 +90,6 @@ export default function UserProfileModal({ user, onClose }) {
                     )}
 
                 </div>
-            </div>
-        </div>
+        </Modal>
     )
 }

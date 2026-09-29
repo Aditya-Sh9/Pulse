@@ -7,6 +7,10 @@ const MAX_MESSAGE_LENGTH = 2000;
 const RATE_WINDOW_MS = 10 * 1000;
 const RATE_MAX_MESSAGES = 20;
 
+// The REST layer emits read receipts through the same server
+let ioInstance = null;
+const getIO = () => ioInstance;
+
 const setPresence = async (uid, status) => {
   try {
     await admin.db().collection('users').doc(uid).update({ status });
@@ -29,11 +33,12 @@ const resetPresence = async () => {
   }
 };
 
-module.exports = function initSocket(server) {
+function initSocket(server) {
   const io = new Server(server, {
     cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
     maxHttpBufferSize: 16 * 1024,
   });
+  ioInstance = io;
 
   resetPresence();
 
@@ -99,6 +104,17 @@ module.exports = function initSocket(server) {
       }
     });
 
+    // Typing indicator: relayed to the other participant only, never stored
+    let lastTyping = 0;
+    socket.on('typing', (data) => {
+      const receiverId = typeof data?.receiverId === 'string' ? data.receiverId : '';
+      if (!receiverId || receiverId.length > 128 || receiverId === uid) return;
+      const now = Date.now();
+      if (data.isTyping && now - lastTyping < 1000) return;
+      lastTyping = now;
+      io.to(`user:${receiverId}`).emit('typing', { from: uid, isTyping: Boolean(data.isTyping) });
+    });
+
     socket.on('disconnect', () => {
       const remaining = (openTabs.get(uid) || 1) - 1;
       if (remaining <= 0) {
@@ -111,4 +127,7 @@ module.exports = function initSocket(server) {
   });
 
   return io;
-};
+}
+
+module.exports = initSocket;
+module.exports.getIO = getIO;

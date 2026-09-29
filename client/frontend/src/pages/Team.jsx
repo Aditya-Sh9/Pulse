@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext'
 import InviteModal from '../components/InviteModal'
 import UserProfileModal from '../components/UserProfileModal'
 import { Search, MoreHorizontal, Mail, Plus, Shield, ShieldAlert, Trash2 } from 'lucide-react'
+import { SkeletonRows } from '../components/Skeleton'
 
 export default function Team() {
-  const { members, updateMemberRole, removeMember, confirmAction } = useProject()
+  const { members, loading, updateMemberRole, removeMember, confirmAction } = useProject()
   const { userRole, currentUser } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -51,8 +52,8 @@ export default function Team() {
   }
 
   return (
-    <div className="p-8 h-full flex flex-col bg-base text-neutral-200">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-8 h-full flex flex-col bg-base text-neutral-200">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <h1 className="text-[26px] leading-tight font-semibold text-neutral-50 tracking-[-0.02em] mb-1">Team Members</h1>
           <p className="text-sm text-neutral-400">
@@ -60,8 +61,8 @@ export default function Team() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
             <input
               type="text"
@@ -69,7 +70,7 @@ export default function Team() {
               placeholder="Search members..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-card border border-raised rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-accent-500 text-white w-64 transition-colors"
+              className="bg-card border border-raised rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-accent-500 text-white w-full sm:w-64 transition-colors placeholder-neutral-500"
             />
           </div>
           <select
@@ -101,7 +102,7 @@ export default function Team() {
               <th className="px-6 py-4 font-semibold">Member</th>
               <th className="px-6 py-4 font-semibold">Status</th>
               <th className="px-6 py-4 font-semibold">Role</th>
-              <th className="px-6 py-4 font-semibold">Email</th>
+              <th className="px-6 py-4 font-semibold hidden md:table-cell">Email</th>
               <th className="px-6 py-4 font-semibold text-right">Actions</th>
             </tr>
           </thead>
@@ -140,9 +141,9 @@ export default function Team() {
                     {member.role === 'admin' ? 'Admin' : 'Employee'}
                   </span>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-4 hidden md:table-cell">
                   <div className="flex items-center gap-2 text-sm text-neutral-400">
-                    <Mail size={14} className="text-neutral-500" />
+                    <Mail size={14} className="text-neutral-500" aria-hidden="true" />
                     {member.email}
                   </div>
                 </td>
@@ -189,7 +190,8 @@ export default function Team() {
           </tbody>
         </table>
 
-        {filteredMembers.length === 0 && (
+        {loading.members && <SkeletonRows rows={4} label="Loading team" />}
+        {!loading.members && filteredMembers.length === 0 && (
           <div className="p-8 text-center text-neutral-500">
             No members match your search or filter.
           </div>

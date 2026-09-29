@@ -5,6 +5,7 @@ import {
   CheckCircle2, Calendar, LayoutGrid, Search
 } from 'lucide-react'
 import { formatDue, isOverdue } from '../utils/dates'
+import { SkeletonRows } from '../components/Skeleton'
 
 // Professional styling constants for tags
 const PRIORITIES = {
@@ -15,7 +16,7 @@ const PRIORITIES = {
 
 export default function MyTasks() {
   const { currentUser } = useAuth()
-  const { tasks, updateTask, projects, openTaskDrawer } = useProject()
+  const { tasks, loading, updateTask, projects, openTaskDrawer } = useProject()
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState('active') // 'active' or 'completed'
 
@@ -88,7 +89,7 @@ export default function MyTasks() {
 
       {/* --- Task List --- */}
       <div className="relative z-10 flex-1 overflow-y-auto p-6 md:p-10">
-        {filteredTasks.length > 0 ? (
+        {loading.tasks ? <div className="max-w-5xl mx-auto"><SkeletonRows rows={5} label="Loading your tasks" /></div> : filteredTasks.length > 0 ? (
           <div className="space-y-3 max-w-5xl mx-auto">
             {filteredTasks.map(task => (
               <div
@@ -134,13 +135,13 @@ export default function MyTasks() {
                     </div>
 
                     {/* Date */}
-                    <div className={`flex items-center gap-1.5 text-xs font-medium ${task.status !== 'COMPLETE' && isOverdue(task.dueDate) ? 'text-red-400' : task.dueDate ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                    <div className={`flex items-center gap-1.5 text-xs font-medium ${task.status !== 'COMPLETE' && isOverdue(task.dueDate) ? 'text-red-400' : task.dueDate ? 'text-neutral-400' : 'text-neutral-500'}`}>
                       <Calendar size={14} className={task.dueDate ? '' : 'opacity-50'} />
                       {task.status !== 'COMPLETE' && isOverdue(task.dueDate) ? `Overdue · ${formatDue(task.dueDate)}` : formatDue(task.dueDate) || 'No Date'}
                     </div>
 
                     {/* Priority Badge */}
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-[0.08em] border ${PRIORITIES[task.priority]?.color || 'text-neutral-500 border-neutral-500/20 bg-neutral-500/10'}`}>
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-[0.08em] border ${PRIORITIES[task.priority]?.color || 'text-neutral-500 border-neutral-500/20 bg-neutral-500/10'}`}>
                       {task.priority}
                     </div>
                   </div>
@@ -150,7 +151,7 @@ export default function MyTasks() {
           </div>
         ) : (
           /* Empty State */
-          <div className="h-full flex flex-col items-center justify-center text-neutral-600 max-w-md mx-auto text-center mt-[-10vh]">
+          <div className="h-full flex flex-col items-center justify-center text-neutral-500 max-w-md mx-auto text-center mt-[-10vh]">
             <div className="w-24 h-24 rounded-full bg-card border border-raised flex items-center justify-center mb-6 shadow-2xl">
               <CheckCircle2 size={40} className="text-accent-500/40" />
             </div>

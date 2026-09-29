@@ -151,13 +151,13 @@ export default function Navbar() {
           <ul className="flex flex-col">
             {sections.map((s) => (
               <li key={s.href} data-menu-item>
-                <a href={s.href} onClick={close} className={`flex min-h-12 items-center rounded-md px-2 text-base font-medium text-ink ${ring}`}>
+                <a href={s.href} onClick={close} className={`flex min-h-12 items-center rounded-md px-2 text-[16px] leading-6 font-medium text-ink ${ring}`}>
                   {s.label}
                 </a>
               </li>
             ))}
             <li data-menu-item>
-              <a href={REPO_URL} target="_blank" rel="noreferrer" className={`flex min-h-12 items-center rounded-md px-2 text-base font-medium text-ink ${ring}`}>
+              <a href={REPO_URL} target="_blank" rel="noreferrer" className={`flex min-h-12 items-center rounded-md px-2 text-[16px] leading-6 font-medium text-ink ${ring}`}>
                 GitHub
               </a>
             </li>

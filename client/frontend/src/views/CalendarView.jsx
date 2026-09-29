@@ -1,10 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { useProject } from '../context/ProjectContext'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, CalendarDays } from 'lucide-react'
 import CreateTaskForm from '../components/CreateTaskForm'
 import ProjectViewShell from '../components/ProjectViewShell'
-import { toDateKey } from '../utils/dates'
+import { toDateKey, parseDateKey } from '../utils/dates'
+import { useShortcut } from '../utils/shortcuts'
+import { EmptyState } from '../components/Skeleton'
 
 const firstOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1)
 
@@ -14,6 +16,7 @@ export default function CalendarView() {
   const [currentDate, setCurrentDate] = useState(() => firstOfMonth(new Date()))
   const [createForDate, setCreateForDate] = useState(null) // null = closed, '' = no preset date
   const [expandedDay, setExpandedDay] = useState(null)
+  useShortcut('new-task', useCallback(() => setCreateForDate(''), []))
 
   const projectTasks = tasks.filter(t => String(t.projectId) === String(projectId) && !t.isArchived)
 
@@ -32,6 +35,14 @@ export default function CalendarView() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + delta, 1))
   }
 
+  // Phone agenda: only days in this month that have tasks
+  const monthPrefix = toDateKey(currentDate).slice(0, 7)
+  const agenda = Object.entries(
+    projectTasks
+      .filter(t => t.dueDate?.startsWith(monthPrefix))
+      .reduce((acc, t) => ({ ...acc, [t.dueDate]: [...(acc[t.dueDate] || []), t] }), {})
+  ).sort(([a], [b]) => a.localeCompare(b))
+
   const handleCreateTask = (taskData) => {
     addTask({ ...taskData, projectId, status: 'TO DO' })
     setCreateForDate(null)
@@ -39,10 +50,10 @@ export default function CalendarView() {
 
   return (
     <ProjectViewShell projectId={projectId} view="calendar">
-      <main className="flex-1 overflow-auto p-8 bg-base">
+      <main className="flex-1 overflow-auto p-4 sm:p-8 bg-base">
         <div className="max-w-6xl mx-auto">
           {/* Month Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <h2 className="text-2xl font-bold text-white" aria-live="polite">{monthName}</h2>
             <div className="flex items-center gap-3">
               <button
@@ -65,8 +76,28 @@ export default function CalendarView() {
             </div>
           </div>
 
+          {/* Phone: agenda list */}
+          <div className="md:hidden space-y-4">
+            {agenda.length === 0 ? (
+              <EmptyState icon={CalendarDays} title="Nothing due this month" description="Tasks with a due date in this month appear here." action={{ label: 'Add a task', icon: Plus, onClick: () => setCreateForDate('') }} />
+            ) : agenda.map(([key, dayTasks]) => (
+              <section key={key} aria-label={parseDateKey(key).toDateString()}>
+                <h3 className={`text-xs font-semibold uppercase tracking-wider mb-2 ${key === todayKey ? 'text-accent-300' : 'text-neutral-400'}`}>
+                  {parseDateKey(key).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}{key === todayKey ? ' · Today' : ''}
+                </h3>
+                <div className="space-y-2">
+                  {dayTasks.map(task => (
+                    <button key={task.id} type="button" onClick={() => openTaskDrawer(task)} className="w-full text-left px-3 py-2.5 rounded-lg bg-card border border-raised text-sm text-neutral-100 hover:border-accent-500/40">
+                      <span className={task.status === 'COMPLETE' ? 'line-through text-neutral-400' : ''}>{task.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+
           {/* Weekday Headers */}
-          <div className="grid grid-cols-7 gap-2 mb-2">
+          <div className="hidden md:grid grid-cols-7 gap-2 mb-2">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
               <div key={day} className="text-center text-xs font-semibold text-neutral-500 py-2">
                 {day}
@@ -75,7 +106,7 @@ export default function CalendarView() {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-2">
+          <div className="hidden md:grid grid-cols-7 gap-2">
             {allDays.map((day, idx) => {
               if (!day) return <div key={`blank-${idx}`} className="min-h-[120px]" />
 
@@ -96,7 +127,7 @@ export default function CalendarView() {
                       type="button"
                       aria-label={`Add task due ${dateKey}`}
                       onClick={() => setCreateForDate(dateKey)}
-                      className="p-0.5 rounded text-neutral-500 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-white hover:bg-raised transition-opacity"
+                      className="p-0.5 rounded text-neutral-400 opacity-40 group-hover:opacity-100 focus:opacity-100 hover:text-white hover:bg-raised transition-opacity"
                     >
                       <Plus size={14} />
                     </button>

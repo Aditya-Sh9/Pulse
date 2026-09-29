@@ -5,7 +5,7 @@ const { logActivity } = require('./activityController');
 // @route   PUT /api/users/profile
 // @access  Authenticated (own profile only)
 exports.updateProfile = async (req, res) => {
-  const { displayName, notifications } = req.body;
+  const { displayName, notifications, emailDigest } = req.body;
   const uid = req.user.uid;
   const updates = { updatedAt: new Date().toISOString() };
 
@@ -21,6 +21,13 @@ exports.updateProfile = async (req, res) => {
       return res.status(400).json({ message: 'notifications must be true or false' });
     }
     updates.notifications = notifications;
+  }
+
+  if (emailDigest !== undefined) {
+    if (typeof emailDigest !== 'boolean') {
+      return res.status(400).json({ message: 'emailDigest must be true or false' });
+    }
+    updates.emailDigest = emailDigest;
   }
 
   try {

@@ -14,20 +14,24 @@ import {
   increment,
   where,
   limit,
-  getDocs,
   writeBatch
 } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from '../config/firebase'
 import { useAuth } from './AuthContext'
 import confetti from 'canvas-confetti'
-import { AlertCircle, CheckCircle2, X, AlertTriangle, Info } from 'lucide-react'
+import { AlertCircle, CheckCircle2, X, Info } from 'lucide-react'
 import { io } from 'socket.io-client'
+import Modal from '../components/Modal'
+import { AlertTriangle } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 const COLLAPSED_SPACES_KEY = 'pulse:collapsedSpaces'
+const UNDO_WINDOW_MS = 6000
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 
 // Fields a client is allowed to set when creating or duplicating a task
-const TASK_FIELDS = ['title', 'description', 'priority', 'assigneeId', 'dueDate', 'status', 'projectId']
+const TASK_FIELDS = ['title', 'description', 'priority', 'assigneeId', 'dueDate', 'status', 'projectId', 'labels', 'recurrence', 'blockedBy', 'order']
 
 const clip = (text, max) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
 
@@ -36,6 +40,19 @@ const readCollapsedSpaces = () => {
     return JSON.parse(localStorage.getItem(COLLAPSED_SPACES_KEY)) || []
   } catch {
     return []
+  }
+}
+
+// Position within a board column: explicit `order`, else creation time
+export const taskSortKey = (t) => t.order ?? t.createdAt?.toMillis?.() ?? Number.MAX_SAFE_INTEGER
+
+const showDesktopNotification = (title, body, tag) => {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted' || !document.hidden) return
+    const n = new Notification(title, { body, tag, icon: '/pulse.svg' })
+    n.onclick = () => { window.focus(); n.close() }
+  } catch {
+    // Some browsers (e.g. iOS Safari) expose Notification but throw on construction
   }
 }
 
@@ -53,23 +70,32 @@ export const ProjectProvider = ({ children }) => {
   // The socket is plumbing, not UI state, so it lives in a ref
   const socketRef = useRef(null)
   const [realtimeMessages, setRealtimeMessages] = useState([])
+  const [unreadCounts, setUnreadCounts] = useState({})
+  const [typingFrom, setTypingFrom] = useState({})
   const [rawSpaces, setRawSpaces] = useState([])
   const [collapsedSpaces, setCollapsedSpaces] = useState(readCollapsedSpaces)
+  const [loaded, setLoaded] = useState({ tasks: false, projects: false, members: false, notifications: false })
 
   const [activeTaskId, setActiveTaskId] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   // Status changes go through the API; keep them applied locally until the snapshot catches up
   const [pendingStatus, setPendingStatus] = useState({})
+  const [pendingOrder, setPendingOrder] = useState({})
+  // Deletes wait out an undo window before hitting Firestore
+  const [pendingDeletes, setPendingDeletes] = useState(() => new Set())
+  const deleteTimers = useRef({})
 
-  // --- GLOBAL TOAST SYSTEM ---
+  const markLoaded = useCallback((key) => setLoaded(prev => (prev[key] ? prev : { ...prev, [key]: true })), [])
+
+  // --- GLOBAL TOAST SYSTEM (optionally with an action, e.g. Undo) ---
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
 
-  const showToast = useCallback((msg, type = 'error') => {
+  const showToast = useCallback((msg, type = 'error', { action, duration } = {}) => {
     clearTimeout(toastTimer.current)
-    setToast({ msg, type })
-    toastTimer.current = setTimeout(() => setToast(null), 4000)
+    setToast({ msg, type, action, id: Date.now() })
+    toastTimer.current = setTimeout(() => setToast(null), duration || (action ? UNDO_WINDOW_MS : 4000))
   }, [])
 
   useEffect(() => () => clearTimeout(toastTimer.current), [])
@@ -81,12 +107,7 @@ export const ProjectProvider = ({ children }) => {
     setConfirmConfig({ title, message, onConfirm, type })
   }, [])
 
-  useEffect(() => {
-    if (!confirmConfig) return
-    const onKey = (e) => { if (e.key === 'Escape') setConfirmConfig(null) }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [confirmConfig])
+  const closeConfirm = useCallback(() => setConfirmConfig(null), [])
 
   const myProfile = useMemo(() => members.find(m => m.id === currentUser?.uid), [members, currentUser?.uid])
 
@@ -102,43 +123,31 @@ export const ProjectProvider = ({ children }) => {
   )
 
   const visibleTasks = useMemo(() => {
-    if (Object.keys(pendingStatus).length === 0) return tasks
-    return tasks.map(t => (pendingStatus[t.id] ? { ...t, status: pendingStatus[t.id] } : t))
-  }, [tasks, pendingStatus])
+    const hasOverrides = Object.keys(pendingStatus).length > 0 || Object.keys(pendingOrder).length > 0
+    let list = pendingDeletes.size > 0 ? tasks.filter(t => !pendingDeletes.has(t.id)) : tasks
+    if (hasOverrides) {
+      list = list.map(t => {
+        if (!pendingStatus[t.id] && pendingOrder[t.id] === undefined) return t
+        return {
+          ...t,
+          ...(pendingStatus[t.id] ? { status: pendingStatus[t.id] } : {}),
+          ...(pendingOrder[t.id] !== undefined ? { order: pendingOrder[t.id] } : {})
+        }
+      })
+    }
+    return list
+  }, [tasks, pendingStatus, pendingOrder, pendingDeletes])
+
+  const allLabels = useMemo(() => {
+    const set = new Set()
+    tasks.forEach(t => (t.labels || []).forEach(l => set.add(l)))
+    return [...set].sort((a, b) => a.localeCompare(b))
+  }, [tasks])
 
   const activeTask = useMemo(
     () => (activeTaskId ? visibleTasks.find(t => t.id === activeTaskId) || null : null),
     [activeTaskId, visibleTasks]
   )
-
-  // --- REAL-TIME SOCKET (authenticated with the Firebase ID token) ---
-  useEffect(() => {
-    if (!currentUser) return
-    const newSocket = io(API_URL, {
-      // Callback form fetches a fresh token on every (re)connect, so expiry never strands the socket
-      auth: (cb) => { getAuthToken().then(token => cb({ token })).catch(() => cb({})) }
-    })
-    socketRef.current = newSocket
-
-    newSocket.on('connect_error', (err) => console.error('Socket connection failed:', err.message))
-
-    newSocket.on('receive_message', (message) => {
-      setRealtimeMessages(prev => [...prev, message])
-      // Don't toast about a conversation that's already on screen
-      if (window.location.pathname !== `/dashboard/messages/${message.senderId}`) {
-        showToast('New message received', 'success')
-      }
-    })
-
-    newSocket.on('message_sent', (message) => {
-      setRealtimeMessages(prev => (prev.some(m => m._id === message._id) ? prev : [...prev, message]))
-    })
-
-    return () => {
-      newSocket.disconnect()
-      socketRef.current = null
-    }
-  }, [currentUser, getAuthToken, showToast])
 
   const apiFetch = useCallback(async (endpoint, options = {}) => {
     const token = await getAuthToken()
@@ -155,10 +164,65 @@ export const ProjectProvider = ({ children }) => {
 
     const data = await response.json().catch(() => null)
     if (!response.ok) {
-      throw new Error(data?.message || `Request failed (${response.status})`)
+      const error = new Error(data?.message || `Request failed (${response.status})`)
+      error.status = response.status
+      error.data = data
+      throw error
     }
     return data
   }, [getAuthToken])
+
+  // --- REAL-TIME SOCKET (authenticated with the Firebase ID token) ---
+  useEffect(() => {
+    if (!currentUser) return
+    const newSocket = io(API_URL, {
+      // Callback form fetches a fresh token on every (re)connect, so expiry never strands the socket
+      auth: (cb) => { getAuthToken().then(token => cb({ token })).catch(() => cb({})) }
+    })
+    socketRef.current = newSocket
+    const typingTimers = {}
+
+    newSocket.on('connect_error', (err) => console.error('Socket connection failed:', err.message))
+
+    newSocket.on('receive_message', (message) => {
+      setRealtimeMessages(prev => [...prev, message])
+      setTypingFrom(prev => ({ ...prev, [message.senderId]: false }))
+      // Don't badge or toast a conversation that's already on screen
+      if (window.location.pathname !== `/dashboard/messages/${message.senderId}`) {
+        setUnreadCounts(prev => ({ ...prev, [message.senderId]: (prev[message.senderId] || 0) + 1 }))
+        showToast('New message received', 'success')
+        showDesktopNotification('New message', clip(message.text, 120), `msg-${message.senderId}`)
+      }
+    })
+
+    newSocket.on('message_sent', (message) => {
+      setRealtimeMessages(prev => (prev.some(m => m._id === message._id) ? prev : [...prev, message]))
+    })
+
+    // Read receipts for messages this user sent
+    newSocket.on('messages_read', ({ chatId, readAt }) => {
+      setRealtimeMessages(prev => prev.map(m => (
+        m.chatId === chatId && m.senderId === currentUser.uid && !m.read ? { ...m, read: true, readAt } : m
+      )))
+    })
+
+    // Typing indicator auto-expires if the "stopped typing" event is lost
+    newSocket.on('typing', ({ from, isTyping }) => {
+      clearTimeout(typingTimers[from])
+      setTypingFrom(prev => ({ ...prev, [from]: isTyping }))
+      if (isTyping) typingTimers[from] = setTimeout(() => setTypingFrom(prev => ({ ...prev, [from]: false })), 5000)
+    })
+
+    apiFetch('/api/messages/unread')
+      .then(counts => setUnreadCounts(counts || {}))
+      .catch(error => console.error('Failed to load unread counts:', error))
+
+    return () => {
+      Object.values(typingTimers).forEach(clearTimeout)
+      newSocket.disconnect()
+      socketRef.current = null
+    }
+  }, [currentUser, getAuthToken, showToast, apiFetch])
 
   const logGlobalActivity = useCallback(async (actionText, type = 'system', metadata = {}) => {
     if (!currentUser) return
@@ -175,6 +239,12 @@ export const ProjectProvider = ({ children }) => {
   }, [currentUser, apiFetch])
 
   // The full audit log is admin-only; everyone gets the XP ticker
+  const refreshXpActivities = useCallback(() => {
+    apiFetch('/api/activities/xp')
+      .then(logs => setXpActivities(logs))
+      .catch(error => console.error('Failed to fetch XP activity:', error))
+  }, [apiFetch])
+
   useEffect(() => {
     if (!currentUser || !userRole) return
     let cancelled = false
@@ -199,15 +269,16 @@ export const ProjectProvider = ({ children }) => {
           id: docSnap.id,
           ...data,
           avatar: data.name
-            ? data.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+            ? data.name.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase()
             : '??',
           status: data.status || 'offline',
           productivityScore: data.productivityScore || 0
         }
       }))
+      markLoaded('members')
     })
     return () => unsubscribe()
-  }, [currentUser])
+  }, [currentUser, markLoaded])
 
   // Fetch Spaces from Firestore
   useEffect(() => {
@@ -225,9 +296,10 @@ export const ProjectProvider = ({ children }) => {
     const q = query(collection(db, 'projects'), orderBy('createdAt', 'asc'))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setRawProjects(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
+      markLoaded('projects')
     })
     return () => unsubscribe()
-  }, [currentUser])
+  }, [currentUser, markLoaded])
 
   // Fetch Tasks
   useEffect(() => {
@@ -235,23 +307,27 @@ export const ProjectProvider = ({ children }) => {
     const unsubscribe = onSnapshot(collection(db, 'tasks'), (snapshot) => {
       const freshTasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
       setTasks(freshTasks)
-      // Drop optimistic statuses the server has confirmed
-      setPendingStatus(prev => {
+      markLoaded('tasks')
+      // Drop optimistic values the server has confirmed
+      const settle = (field) => (prev) => {
         const next = { ...prev }
         let changed = false
-        for (const [id, status] of Object.entries(prev)) {
+        for (const [id, value] of Object.entries(prev)) {
           const t = freshTasks.find(x => x.id === id)
-          if (!t || t.status === status) { delete next[id]; changed = true }
+          if (!t || t[field] === value) { delete next[id]; changed = true }
         }
         return changed ? next : prev
-      })
+      }
+      setPendingStatus(settle('status'))
+      setPendingOrder(settle('order'))
     })
     return () => unsubscribe()
-  }, [currentUser])
+  }, [currentUser, markLoaded])
 
-  // Fetch Notifications
+  // Fetch Notifications (and surface new ones as desktop notifications when the tab is hidden)
   useEffect(() => {
     if (!currentUser) return
+    let initial = true
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', currentUser.uid),
@@ -260,9 +336,19 @@ export const ProjectProvider = ({ children }) => {
     )
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setNotifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
+      markLoaded('notifications')
+      if (!initial) {
+        snapshot.docChanges()
+          .filter(c => c.type === 'added' && !c.doc.data().read)
+          .forEach(c => {
+            const n = c.doc.data()
+            showDesktopNotification(n.senderName || 'Pulse', n.message, c.doc.id)
+          })
+      }
+      initial = false
     })
     return () => unsubscribe()
-  }, [currentUser])
+  }, [currentUser, markLoaded])
 
   const actorName = currentUser?.displayName || myProfile?.name || currentUser?.email || 'User'
 
@@ -283,7 +369,7 @@ export const ProjectProvider = ({ children }) => {
 
   const triggerNotification = useCallback(async (toUserId, type, message, referenceId) => {
     if (!currentUser || !toUserId || toUserId === currentUser.uid) return
-    // Respect the recipient's "Push Notifications" preference for task alerts
+    // Respect the recipient's task-notification preference
     const recipient = members.find(m => m.id === toUserId)
     if (recipient?.notifications === false && ['assigned', 'mention'].includes(type)) return
     try {
@@ -332,6 +418,7 @@ export const ProjectProvider = ({ children }) => {
         assigneeId: newTask.assigneeId || '',
         dueDate: newTask.dueDate || '',
         description: newTask.description || '',
+        labels: newTask.labels || [],
         createdAt: serverTimestamp(),
         createdBy: currentUser.uid,
         comments: 0,
@@ -352,24 +439,29 @@ export const ProjectProvider = ({ children }) => {
     }
   }, [currentUser, triggerNotification, logTaskActivity, logGlobalActivity, showToast])
 
-  // Status is server-authoritative (it drives XP), so it is the one field not written directly
+  // Status is server-authoritative (it drives XP, dependencies and recurrence)
   const setTaskStatus = useCallback(async (taskId, status) => {
     const oldTask = tasks.find(t => t.id === taskId)
-    if (!oldTask || oldTask.status === status) return
+    if (!oldTask || oldTask.status === status) return true
 
     setPendingStatus(prev => ({ ...prev, [taskId]: status }))
     try {
-      await apiFetch(`/api/tasks/${taskId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+      const result = await apiFetch(`/api/tasks/${taskId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
       if (status === 'COMPLETE') {
-        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ['#45C1AA', '#F57D43', '#10B981'], zIndex: 9999 })
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 }, colors: ['#45C1AA', '#F57D43', '#10B981'], zIndex: 9999, disableForReducedMotion: true })
+        if (result?.nextOccurrenceId) showToast('Done! The next occurrence has been scheduled.', 'success')
+        else if (result?.xpDelta === 0 && oldTask.assigneeId) showToast('Completed. Daily XP cap reached, so no XP this time.', 'info')
       }
+      return true
     } catch (error) {
       setPendingStatus(prev => {
         const next = { ...prev }
         delete next[taskId]
         return next
       })
-      showToast(error.message || 'Failed to update status', 'error')
+      const blockers = error.data?.blockedBy
+      showToast(blockers?.length ? `Finish first: ${blockers.map(b => `"${b.title}"`).join(', ')}` : (error.message || 'Failed to update status'), 'error')
+      return false
     }
   }, [tasks, apiFetch, showToast])
 
@@ -400,6 +492,9 @@ export const ProjectProvider = ({ children }) => {
         await logTaskActivity(taskId, fields.dueDate ? `set the due date to ${fields.dueDate}` : 'removed the due date')
         await logGlobalActivity(`Changed due date for "${taskName}"`, 'task')
       }
+      if (fields.recurrence !== undefined && fields.recurrence !== (oldTask.recurrence || '')) {
+        await logTaskActivity(taskId, fields.recurrence ? `set this task to repeat ${fields.recurrence}` : 'stopped this task repeating')
+      }
       if (fields.isArchived !== undefined && fields.isArchived !== !!oldTask.isArchived) {
         await logTaskActivity(taskId, fields.isArchived ? 'archived this task' : 'unarchived this task')
         await logGlobalActivity(fields.isArchived ? `Archived task "${taskName}"` : `Unarchived task "${taskName}"`, 'task')
@@ -421,26 +516,115 @@ export const ProjectProvider = ({ children }) => {
     }
   }, [tasks, setTaskStatus, triggerNotification, members, logTaskActivity, logGlobalActivity, showToast])
 
-  const deleteTask = useCallback(async (taskId) => {
+  // Archive/unarchive with a one-click Undo
+  const setTaskArchived = useCallback(async (task, archived) => {
+    await updateTask(task.id, { isArchived: archived })
+    showToast(archived ? `Archived "${clip(task.title || 'task', 40)}"` : 'Task restored', 'success', archived ? {
+      action: { label: 'Undo', onClick: () => updateTask(task.id, { isArchived: false }) }
+    } : {})
+  }, [updateTask, showToast])
+
+  const commitDelete = useCallback(async (task) => {
+    delete deleteTimers.current[task.id]
     try {
-      const task = tasks.find(t => t.id === taskId)
-      await deleteDoc(doc(db, 'tasks', taskId))
-      if (activeTaskId === taskId) closeTaskDrawer()
-      await logGlobalActivity(`Deleted task "${task?.title || 'Unknown'}"`, 'task')
-      showToast('Task deleted', 'success')
+      await deleteDoc(doc(db, 'tasks', task.id))
+      await logGlobalActivity(`Deleted task "${task.title || 'Unknown'}"`, 'task')
     } catch (error) {
       console.error('Error deleting task: ', error)
       showToast(error.code === 'permission-denied' ? 'Only admins can delete tasks' : 'Failed to delete task', 'error')
+    } finally {
+      setPendingDeletes(prev => {
+        const next = new Set(prev)
+        next.delete(task.id)
+        return next
+      })
     }
-  }, [activeTaskId, tasks, closeTaskDrawer, logGlobalActivity, showToast])
+  }, [logGlobalActivity, showToast])
+
+  // Hide immediately, delete after the undo window
+  const deleteTask = useCallback((taskId) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
+    if (userRole !== 'admin') {
+      showToast('Only admins can delete tasks', 'error')
+      return
+    }
+    setPendingDeletes(prev => new Set(prev).add(taskId))
+    if (activeTaskId === taskId) closeTaskDrawer()
+    deleteTimers.current[taskId] = setTimeout(() => commitDelete(task), UNDO_WINDOW_MS)
+    showToast(`Deleted "${clip(task.title || 'task', 40)}"`, 'success', {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          clearTimeout(deleteTimers.current[taskId])
+          delete deleteTimers.current[taskId]
+          setPendingDeletes(prev => {
+            const next = new Set(prev)
+            next.delete(taskId)
+            return next
+          })
+          showToast('Task restored', 'info')
+        }
+      }
+    })
+  }, [tasks, userRole, activeTaskId, closeTaskDrawer, commitDelete, showToast])
+
+  // Leaving the workspace (logout/unmount) finalizes deletes that were still in their undo window
+  useEffect(() => {
+    const timers = deleteTimers.current
+    const flush = () => {
+      Object.keys(timers).forEach(id => {
+        clearTimeout(timers[id])
+        deleteDoc(doc(db, 'tasks', id)).catch(() => {})
+        delete timers[id]
+      })
+    }
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      flush()
+    }
+  }, [])
 
   const duplicateTask = useCallback((task) => addTask({
     ...task,
     title: `${task.title} (Copy)`,
+    order: undefined,
     subtasks: (task.subtasks || []).map((s, i) => ({ ...s, id: Date.now() + i, completed: false }))
   }), [addTask])
 
-  // "Remind me": the nightly job notifies watchers the day before a task is due
+  // Board drag & drop: place `taskId` in `status` just before `beforeTaskId` (null = end of column)
+  const reorderTask = useCallback(async (taskId, status, beforeTaskId) => {
+    const column = visibleTasks
+      .filter(t => t.status === status && t.id !== taskId && t.projectId === tasks.find(x => x.id === taskId)?.projectId && !t.isArchived)
+      .sort((a, b) => taskSortKey(a) - taskSortKey(b))
+    const index = beforeTaskId ? column.findIndex(t => t.id === beforeTaskId) : column.length
+    const prev = index > 0 ? taskSortKey(column[index - 1]) : null
+    const next = index >= 0 && index < column.length ? taskSortKey(column[index]) : null
+    const order = prev === null && next === null ? Date.now()
+      : prev === null ? next - 1024
+        : next === null ? prev + 1024
+          : (prev + next) / 2
+
+    setPendingOrder(p => ({ ...p, [taskId]: order }))
+    const task = tasks.find(t => t.id === taskId)
+    if (task && task.status !== status) {
+      const ok = await setTaskStatus(taskId, status)
+      if (!ok) {
+        setPendingOrder(p => { const n = { ...p }; delete n[taskId]; return n })
+        return
+      }
+    }
+    try {
+      await updateDoc(doc(db, 'tasks', taskId), { order })
+    } catch (error) {
+      console.error('Error reordering task:', error)
+      setPendingOrder(p => { const n = { ...p }; delete n[taskId]; return n })
+      showToast('Failed to move task', 'error')
+    }
+  }, [visibleTasks, tasks, setTaskStatus, showToast])
+
+  // "Remind me": the daily job notifies watchers the day before a task is due
   const toggleTaskWatch = useCallback(async (task) => {
     if (!currentUser) return
     const watching = (task.watchers || []).includes(currentUser.uid)
@@ -453,6 +637,61 @@ export const ProjectProvider = ({ children }) => {
     } catch (error) {
       console.error('Error toggling reminder:', error)
       showToast('Failed to update reminder', 'error')
+    }
+  }, [currentUser, showToast])
+
+  // --- Attachments (Firebase Storage: tasks/{taskId}/{uid}/{file}) ---
+  const uploadFile = useCallback(async (taskId, file) => {
+    if (file.size > MAX_ATTACHMENT_BYTES) throw new Error(`"${file.name}" is larger than 10 MB`)
+    const safeName = file.name.replace(/[^\w.-]+/g, '_').slice(-120)
+    const path = `tasks/${taskId}/${currentUser.uid}/${Date.now()}-${safeName}`
+    const fileRef = storageRef(storage, path)
+    await uploadBytes(fileRef, file, { contentType: file.type || 'application/octet-stream' })
+    return {
+      name: file.name,
+      path,
+      url: await getDownloadURL(fileRef),
+      size: file.size,
+      type: file.type || '',
+      uploadedBy: currentUser.uid,
+      uploadedAt: new Date().toISOString()
+    }
+  }, [currentUser])
+
+  const addTaskAttachments = useCallback(async (taskId, files) => {
+    const uploaded = []
+    for (const file of files) {
+      try {
+        uploaded.push(await uploadFile(taskId, file))
+      } catch (error) {
+        console.error('Upload failed:', error)
+        showToast(error.message?.includes('10 MB') ? error.message : `Couldn’t upload "${file.name}". Is Firebase Storage enabled?`, 'error')
+      }
+    }
+    if (uploaded.length === 0) return
+    try {
+      await updateDoc(doc(db, 'tasks', taskId), { attachments: arrayUnion(...uploaded) })
+      await logTaskActivity(taskId, `attached ${uploaded.length === 1 ? `"${uploaded[0].name}"` : `${uploaded.length} files`}`)
+      showToast(uploaded.length === 1 ? 'File attached' : `${uploaded.length} files attached`, 'success')
+    } catch (error) {
+      console.error('Error saving attachments:', error)
+      showToast('Failed to save attachment', 'error')
+    }
+  }, [uploadFile, logTaskActivity, showToast])
+
+  const removeTaskAttachment = useCallback(async (task, attachment) => {
+    try {
+      await updateDoc(doc(db, 'tasks', task.id), {
+        attachments: (task.attachments || []).filter(a => a.path !== attachment.path)
+      })
+      // Only the uploader can delete the stored object; others just unlink it
+      if (attachment.uploadedBy === currentUser?.uid) {
+        await deleteObject(storageRef(storage, attachment.path)).catch(() => {})
+      }
+      showToast('Attachment removed', 'info')
+    } catch (error) {
+      console.error('Error removing attachment:', error)
+      showToast('Failed to remove attachment', 'error')
     }
   }, [currentUser, showToast])
 
@@ -495,10 +734,21 @@ export const ProjectProvider = ({ children }) => {
     } catch { showToast('Failed to delete subtask', 'error') }
   }, [logGlobalActivity, showToast])
 
-  const addComment = useCallback(async (taskId, text) => {
+  const addComment = useCallback(async (taskId, text, files = []) => {
     try {
+      const attachments = []
+      for (const file of files) {
+        try {
+          attachments.push(await uploadFile(taskId, file))
+        } catch (error) {
+          showToast(error.message?.includes('10 MB') ? error.message : `Couldn’t upload "${file.name}"`, 'error')
+        }
+      }
+      if (!text.trim() && attachments.length === 0) return false
+
       await addDoc(collection(db, 'tasks', taskId, 'comments'), {
-        text: clip(text, 2000),
+        text: clip(text.trim() || ' ', 2000),
+        attachments,
         userId: currentUser.uid,
         userName: actorName,
         userAvatar: actorName[0].toUpperCase(),
@@ -518,12 +768,15 @@ export const ProjectProvider = ({ children }) => {
         if (member) mentioned.add(member.id)
       }
       mentioned.forEach(id => triggerNotification(id, 'mention', 'mentioned you in a comment', taskId))
+      return true
     } catch (error) {
       console.error('Error adding comment: ', error)
       showToast('Failed to add comment', 'error')
+      return false
     }
-  }, [members, currentUser, actorName, triggerNotification, logGlobalActivity, showToast])
+  }, [members, currentUser, actorName, uploadFile, triggerNotification, logGlobalActivity, showToast])
 
+  // --- Direct messages ---
   const sendMessage = useCallback((receiverId, text) => {
     const socket = socketRef.current
     if (!currentUser || !receiverId || !text.trim() || !socket) return
@@ -531,17 +784,19 @@ export const ProjectProvider = ({ children }) => {
       showToast('Reconnecting to chat… try again in a moment', 'info')
       return
     }
+    socket.emit('typing', { receiverId, isTyping: false })
     socket.emit('send_message', { receiverId, text }, (response) => {
-      if (!response?.ok) {
-        showToast(response?.error || 'Message could not be sent', 'error')
-        return
-      }
-      triggerNotification(receiverId, 'message', 'sent you a message', currentUser.uid)
+      if (!response?.ok) showToast(response?.error || 'Message could not be sent', 'error')
     })
-  }, [currentUser, triggerNotification, showToast])
+  }, [currentUser, showToast])
+
+  const sendTyping = useCallback((receiverId, isTyping) => {
+    socketRef.current?.emit('typing', { receiverId, isTyping })
+  }, [])
 
   const markChatAsRead = useCallback(async (otherUserId) => {
     if (!currentUser || !otherUserId) return
+    setUnreadCounts(prev => (prev[otherUserId] ? { ...prev, [otherUserId]: 0 } : prev))
     try {
       await apiFetch('/api/messages/read', {
         method: 'POST',
@@ -552,30 +807,20 @@ export const ProjectProvider = ({ children }) => {
     }
   }, [currentUser, apiFetch])
 
-  const markMessagesAsReadForUser = useCallback(async (senderId) => {
-    const unreadNotifs = notifications.filter(n => n.type === 'message' && n.taskId === senderId && !n.read)
-    if (unreadNotifs.length === 0) return
-
+  // Returns { messages (oldest first), hasMore }; pass `before` (ISO date) for older pages
+  const fetchChatHistory = useCallback(async (otherUserId, before) => {
+    if (!currentUser || !otherUserId) return { messages: [], hasMore: false }
     try {
-      const batch = writeBatch(db)
-      unreadNotifs.forEach(n => batch.update(doc(db, 'notifications', n.id), { read: true }))
-      await batch.commit()
-    } catch (error) {
-      console.error('Failed to clear message notifications:', error)
-    }
-  }, [notifications])
-
-  const fetchChatHistory = useCallback(async (otherUserId) => {
-    if (!currentUser || !otherUserId) return []
-    try {
-      return await apiFetch(`/api/messages/${encodeURIComponent(otherUserId)}`)
+      const qs = before ? `?before=${encodeURIComponent(before)}` : ''
+      return await apiFetch(`/api/messages/${encodeURIComponent(otherUserId)}${qs}`)
     } catch (error) {
       console.error('Error fetching chat history:', error)
       showToast('Could not load this conversation', 'error')
-      return []
+      return { messages: [], hasMore: false }
     }
   }, [currentUser, apiFetch, showToast])
 
+  // --- Notifications ---
   const markNotificationAsRead = useCallback(async (notifId) => {
     try {
       await updateDoc(doc(db, 'notifications', notifId), { read: true })
@@ -614,6 +859,29 @@ export const ProjectProvider = ({ children }) => {
     } catch { showToast('Failed to clear inbox', 'error') }
   }, [notifications, showToast])
 
+  // Browser notifications while the tab is in the background (opt-in, per user)
+  const setDesktopNotifications = useCallback(async (enabled) => {
+    if (!currentUser) return false
+    if (enabled) {
+      if (typeof Notification === 'undefined') {
+        showToast('This browser doesn’t support desktop notifications', 'error')
+        return false
+      }
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        showToast('Notifications are blocked. Allow them in your browser’s site settings.', 'error')
+        return false
+      }
+    }
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), { desktopNotifications: enabled })
+      return true
+    } catch {
+      showToast('Could not save your preference', 'error')
+      return false
+    }
+  }, [currentUser, showToast])
+
   // Help menu → "Contact Admin": delivers the note to every admin's inbox
   const contactAdmins = useCallback(async (text) => {
     const admins = members.filter(m => m.role === 'admin' && m.id !== currentUser?.uid)
@@ -626,18 +894,39 @@ export const ProjectProvider = ({ children }) => {
     return true
   }, [members, currentUser, triggerNotification, showToast])
 
+  // --- Saved filters (per user) ---
+  const saveFilter = useCallback(async (name, filter) => {
+    if (!currentUser) return
+    const entry = { id: `${Date.now()}`, name: clip(name.trim(), 40), ...filter }
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), { savedFilters: arrayUnion(entry) })
+      showToast(`Saved view "${entry.name}"`, 'success')
+      return entry
+    } catch {
+      showToast('Could not save this view', 'error')
+    }
+  }, [currentUser, showToast])
+
+  const deleteFilter = useCallback(async (filterId) => {
+    if (!currentUser) return
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        savedFilters: (myProfile?.savedFilters || []).filter(f => f.id !== filterId)
+      })
+    } catch {
+      showToast('Could not delete this view', 'error')
+    }
+  }, [currentUser, myProfile?.savedFilters, showToast])
+
+  // --- XP / Leaderboard ---
   const adjustProductivityScore = useCallback(async (userId, amount, reason) => {
     try {
-      // 1. Update the actual score (Critical)
       await updateDoc(doc(db, 'users', userId), { productivityScore: increment(amount) })
 
       const member = members.find(m => m.id === userId)
       const actionWord = amount > 0 ? `awarded you ${amount} XP` : `deducted ${Math.abs(amount)} XP from your profile`
 
-      // 2. Try to notify the user (Non-critical)
       await triggerNotification(userId, 'system', `${actionWord}. Reason: ${reason}`, 'leaderboard')
-
-      // 3. Log to the audit log + Leaderboard ticker
       await logGlobalActivity(`Adjusted ${member?.name || 'User'}'s XP by ${amount}. Reason: ${reason}`, 'xp')
 
       showToast('XP Adjusted Successfully', 'success')
@@ -649,20 +938,20 @@ export const ProjectProvider = ({ children }) => {
     }
   }, [triggerNotification, logGlobalActivity, members, showToast])
 
-  const resetAllProductivityScores = useCallback(async () => {
+  // Archives current standings as a season on the server, then resets everyone's XP
+  const closeSeason = useCallback(async (name) => {
     try {
-      const snapshot = await getDocs(collection(db, 'users'))
-      // Firestore batches cap at 500 writes
-      for (let i = 0; i < snapshot.docs.length; i += 450) {
-        const batch = writeBatch(db)
-        snapshot.docs.slice(i, i + 450).forEach(docSnap => batch.update(docSnap.ref, { productivityScore: 0 }))
-        await batch.commit()
-      }
-      await logGlobalActivity('Reset the entire leaderboard for a new season', 'xp')
-      showToast('Season reset successfully! All XP cleared.', 'success')
-    } catch { showToast('Failed to reset leaderboard', 'error') }
-  }, [logGlobalActivity, showToast])
+      const { number } = await apiFetch('/api/leaderboard/seasons', { method: 'POST', body: JSON.stringify({ name }) })
+      refreshXpActivities()
+      showToast(`Season ${number} archived. A new season has started!`, 'success')
+      return true
+    } catch (error) {
+      showToast(error.message || 'Failed to start a new season', 'error')
+      return false
+    }
+  }, [apiFetch, refreshXpActivities, showToast])
 
+  // --- Projects & spaces ---
   const addProject = useCallback(async (projectData) => {
     try {
       const newProject = {
@@ -772,15 +1061,19 @@ export const ProjectProvider = ({ children }) => {
 
   const value = {
     tasks: visibleTasks,
+    loading: { tasks: !loaded.tasks, projects: !loaded.projects, members: !loaded.members, notifications: !loaded.notifications },
     projects,
     members,
     myProfile,
     spaces,
+    allLabels,
     notifications,
     globalActivities,
     xpActivities,
     realtimeMessages,
     setRealtimeMessages,
+    unreadCounts,
+    typingFrom,
     activeTask,
     isDrawerOpen,
     openTaskDrawer,
@@ -788,17 +1081,21 @@ export const ProjectProvider = ({ children }) => {
     addTask,
     updateTask,
     deleteTask,
+    setTaskArchived,
     duplicateTask,
     moveTask,
+    reorderTask,
     toggleTaskWatch,
+    addTaskAttachments,
+    removeTaskAttachment,
     addSubtask,
     toggleSubtask,
     editSubtask,
     deleteSubtask,
     addComment,
     sendMessage,
+    sendTyping,
     markChatAsRead,
-    markMessagesAsReadForUser,
     fetchChatHistory,
     getMemberById,
     removeMember,
@@ -815,9 +1112,12 @@ export const ProjectProvider = ({ children }) => {
     markAllNotificationsAsRead,
     deleteNotification,
     clearNotifications,
+    setDesktopNotifications,
     contactAdmins,
+    saveFilter,
+    deleteFilter,
     adjustProductivityScore,
-    resetAllProductivityScores,
+    closeSeason,
     showToast,
     confirmAction,
     currentUser,
@@ -825,48 +1125,54 @@ export const ProjectProvider = ({ children }) => {
   }
 
   const getToastStyles = (type) => {
-    if (type === 'error') return { bg: 'bg-card border-red-500/30 text-red-400', icon: <AlertCircle size={18} /> }
-    if (type === 'info') return { bg: 'bg-card border-edge text-neutral-200', icon: <Info size={18} /> }
-    return { bg: 'bg-card border-green-500/30 text-green-400', icon: <CheckCircle2 size={18} /> }
+    if (type === 'error') return { bg: 'bg-card border-red-500/30 text-red-400', icon: <AlertCircle size={18} aria-hidden="true" /> }
+    if (type === 'info') return { bg: 'bg-card border-edge text-neutral-200', icon: <Info size={18} aria-hidden="true" /> }
+    return { bg: 'bg-card border-green-500/30 text-green-400', icon: <CheckCircle2 size={18} aria-hidden="true" /> }
   }
 
   return (
     <ProjectContext.Provider value={value}>
       {children}
 
-      {toast && (
-        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-[9999] animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${getToastStyles(toast.type).bg}`}>
+      {/* Always-mounted live region so screen readers announce every toast */}
+      <div role="status" aria-live="polite" className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-[9999] pointer-events-none flex justify-end">
+        {toast && (
+          <div key={toast.id} className={`pointer-events-auto flex items-center gap-3 pl-4 pr-2 py-2.5 rounded-lg shadow-2xl border animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-md ${getToastStyles(toast.type).bg}`}>
             {getToastStyles(toast.type).icon}
-            <span className="font-medium text-sm pr-4">{toast.msg}</span>
-            <button onClick={() => setToast(null)} aria-label="Dismiss notification" className="opacity-50 hover:opacity-100 transition-opacity">
+            <span className="font-medium text-sm flex-1">{toast.msg}</span>
+            {toast.action && (
+              <button
+                onClick={() => { toast.action.onClick(); setToast(null) }}
+                className="px-3 py-1.5 rounded-md text-sm font-semibold text-white bg-raised hover:bg-edge transition-colors"
+              >
+                {toast.action.label}
+              </button>
+            )}
+            <button onClick={() => setToast(null)} aria-label="Dismiss notification" className="p-1.5 rounded-md opacity-60 hover:opacity-100 hover:bg-raised transition">
               <X size={14} />
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {confirmConfig && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmConfig(null)} />
-          <div className="relative z-10 w-full max-w-md bg-card border border-raised rounded-xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 mb-4">
-              {confirmConfig.type === 'danger' ? <AlertTriangle className="text-red-500" size={24} /> : <Info className="text-accent-500" size={24} />}
-              <h3 id="confirm-title" className="text-lg font-bold text-white">{confirmConfig.title}</h3>
-            </div>
-            <p className="text-neutral-300 text-sm leading-relaxed mb-6">{confirmConfig.message}</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmConfig(null)} className="px-4 py-2 rounded-lg text-sm font-medium text-neutral-400 hover:bg-raised transition-colors">Cancel</button>
-              <button
-                autoFocus
-                onClick={() => { confirmConfig.onConfirm(); setConfirmConfig(null) }}
-                className={`px-6 py-2 rounded-lg text-sm font-bold text-white transition-colors ${confirmConfig.type === 'danger' ? 'bg-red-600 hover:bg-red-500 shadow-red-600/20' : 'bg-accent-600 hover:bg-accent-500'}`}
-              >
-                Confirm
-              </button>
-            </div>
+        <Modal onClose={closeConfirm} role="alertdialog" labelledBy="confirm-title" z="z-[9998]" className="max-w-md bg-card border border-raised rounded-xl p-6 shadow-2xl">
+          <div className="flex items-center gap-3 mb-4">
+            {confirmConfig.type === 'danger' ? <AlertTriangle className="text-red-500" size={24} aria-hidden="true" /> : <Info className="text-accent-500" size={24} aria-hidden="true" />}
+            <h3 id="confirm-title" className="text-lg font-bold text-white">{confirmConfig.title}</h3>
           </div>
-        </div>
+          <p className="text-neutral-300 text-sm leading-relaxed mb-6">{confirmConfig.message}</p>
+          <div className="flex justify-end gap-3">
+            <button onClick={closeConfirm} className="px-4 py-2 rounded-lg text-sm font-medium text-neutral-300 hover:bg-raised transition-colors">Cancel</button>
+            <button
+              autoFocus
+              onClick={() => { confirmConfig.onConfirm(); setConfirmConfig(null) }}
+              className={`px-6 py-2 rounded-lg text-sm font-bold text-white transition-colors ${confirmConfig.type === 'danger' ? 'bg-red-600 hover:bg-red-500 shadow-red-600/20' : 'bg-accent-600 hover:bg-accent-500'}`}
+            >
+              Confirm
+            </button>
+          </div>
+        </Modal>
       )}
     </ProjectContext.Provider>
   )

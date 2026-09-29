@@ -83,7 +83,8 @@ export const AuthProvider = ({ children }) => {
     return result.user
   }
 
-  const resetPassword = (email) => sendPasswordResetEmail(auth, email)
+  // After choosing a new password, Firebase's handler page links back to our login
+  const resetPassword = (email) => sendPasswordResetEmail(auth, email, { url: `${window.location.origin}/login` })
 
   // Logout
   const logout = async () => {

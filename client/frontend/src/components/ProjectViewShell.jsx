@@ -57,11 +57,11 @@ export default function ProjectViewShell({ projectId, view, actions, children })
   return (
     <div className="flex flex-col h-full bg-base text-neutral-200">
       <div className="bg-card border-b border-raised flex-shrink-0">
-        <div className="px-6 pt-4 pb-2 flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 pt-4 pb-2 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-neutral-400 relative min-w-0" ref={switcherRef}>
-            <Folder size={14} className="flex-shrink-0" aria-hidden="true" />
-            <span className="truncate">{space?.name || 'Space'}</span>
-            <span className="text-neutral-600" aria-hidden="true">/</span>
+            <Folder size={14} className="flex-shrink-0 hidden sm:block" aria-hidden="true" />
+            <span className="truncate hidden sm:inline">{space?.name || 'Space'}</span>
+            <span className="text-neutral-500 hidden sm:inline" aria-hidden="true">/</span>
             <LayoutGrid size={14} className="flex-shrink-0" aria-hidden="true" />
             <button
               type="button"
@@ -96,14 +96,14 @@ export default function ProjectViewShell({ projectId, view, actions, children })
           </div>
 
           <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="flex -space-x-2" aria-label={`${members.length} workspace members`}>
+            <div className="hidden sm:flex -space-x-2" aria-label={`${members.length} workspace members`}>
               {members.slice(0, 3).map(m => (
-                <div key={m.id} title={m.name} className="w-6 h-6 rounded-full bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 border border-card flex items-center justify-center text-[9px] text-accent-200">
+                <div key={m.id} title={m.name} className="w-6 h-6 rounded-full bg-accent-500/15 ring-1 ring-inset ring-accent-400/25 border border-card flex items-center justify-center text-[11px] text-accent-200">
                   {m.avatar}
                 </div>
               ))}
               {members.length > 3 && (
-                <div className="w-6 h-6 rounded-full bg-raised border border-card flex items-center justify-center text-[9px] text-neutral-400">
+                <div className="w-6 h-6 rounded-full bg-raised border border-card flex items-center justify-center text-[11px] text-neutral-400">
                   +{members.length - 3}
                 </div>
               )}
@@ -114,12 +114,12 @@ export default function ProjectViewShell({ projectId, view, actions, children })
           </div>
         </div>
 
-        <div className="px-4 flex items-center gap-1 mt-1">
+        <div className="px-2 sm:px-4 flex items-center gap-1 mt-1 overflow-x-auto">
           {VIEWS.map(({ id, label, icon: Icon }) => (
             <NavLink
               key={id}
               to={`/dashboard/${id}/${projectId}`}
-              className={({ isActive }) => `flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${isActive ? 'border-accent-500 text-white' : 'border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-raised rounded-t-md'}`}
+              className={({ isActive }) => `flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${isActive ? 'border-accent-500 text-white' : 'border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-raised rounded-t-md'}`}
             >
               <Icon size={14} /> {label}
             </NavLink>

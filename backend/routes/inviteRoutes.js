@@ -1,5 +1,4 @@
 const express = require('express');
-const nodemailer = require('nodemailer');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const router = express.Router();
 
@@ -8,17 +7,9 @@ const isAdmin = require('../middleware/adminMiddleware');
 const allowedOrigins = require('../config/allowedOrigins');
 const { getActor, escapeHtml } = require('../utils/userInfo');
 const { logActivity } = require('../controllers/activityController');
+const { sendMail } = require('../config/mailer');
 
 const EMAIL_RE = /^[^\s@<>()]+@[^\s@<>()]+\.[^\s@<>()]{2,}$/;
-
-// Created once; reused across requests
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
 
 // Invites send real email from our account: keep them scarce
 const inviteLimiter = rateLimit({
@@ -67,8 +58,7 @@ router.post('/', verifyToken, isAdmin, inviteLimiter, async (req, res) => {
   `;
 
   try {
-    await transporter.sendMail({
-      from: `"Pulse Workspace" <${process.env.EMAIL_USER}>`,
+    await sendMail({
       to: toEmail,
       subject: `${actor.name.replace(/[\r\n]/g, ' ')} invited you to join Pulse`,
       html: emailHTML

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { X, Mail, Send, CheckCircle2, AlertCircle, Copy } from 'lucide-react'
 import { useProject } from '../context/ProjectContext'
 import { copyToClipboard } from '../utils/links'
+import Modal from './Modal'
 
 export default function InviteModal({ isOpen, onClose }) {
   const { apiFetch, showToast } = useProject()
@@ -49,22 +50,11 @@ export default function InviteModal({ isOpen, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-md bg-card border border-edge rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-
-        {/* Top Glow/Pulse Line */}
-
+    <Modal onClose={onClose} labelledBy="invite-title" className="max-w-md bg-card border border-edge rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-raised flex justify-between items-center bg-panel">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-accent-500"></div>
+          <h3 id="invite-title" className="text-lg font-bold text-white flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-accent-500" aria-hidden="true"></div>
             Invite Member
           </h3>
           <button onClick={onClose} aria-label="Close" className="text-neutral-500 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-md">
@@ -89,7 +79,7 @@ export default function InviteModal({ isOpen, onClose }) {
           ) : (
             <form onSubmit={handleSendInvite} className="space-y-5">
               <div>
-                <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.1em] mb-2 block">
+                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-[0.1em] mb-2 block">
                   Colleague's Email
                 </label>
                 <div className="relative group">
@@ -100,7 +90,7 @@ export default function InviteModal({ isOpen, onClose }) {
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-base border border-edge text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-all placeholder-neutral-600"
+                    className="w-full bg-base border border-edge text-white rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-all placeholder-neutral-500"
                   />
                 </div>
               </div>
@@ -129,7 +119,7 @@ export default function InviteModal({ isOpen, onClose }) {
           {/* Divider */}
           <div className="relative flex items-center py-2">
             <div className="flex-grow border-t border-raised"></div>
-            <span className="flex-shrink-0 mx-4 text-[10px] text-neutral-600 uppercase font-bold tracking-widest">Workspace Link</span>
+            <span className="flex-shrink-0 mx-4 text-[11px] text-neutral-500 uppercase font-bold tracking-widest">Workspace Link</span>
             <div className="flex-grow border-t border-raised"></div>
           </div>
 
@@ -149,7 +139,6 @@ export default function InviteModal({ isOpen, onClose }) {
           </div>
 
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

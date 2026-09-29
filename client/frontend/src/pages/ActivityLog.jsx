@@ -51,7 +51,7 @@ export default function ActivityLog() {
   })
 
   return (
-    <div className="p-8 h-full flex flex-col bg-base text-neutral-200">
+    <div className="p-4 sm:p-8 h-full flex flex-col bg-base text-neutral-200">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-[26px] leading-tight font-semibold text-neutral-50 tracking-[-0.02em] mb-2 flex items-center gap-3">
