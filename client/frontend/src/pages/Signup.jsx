@@ -24,9 +24,17 @@ export default function Signup() {
     setIsLoading(true)
 
     try {
-      // New accounts are always employees; Firestore rules reject anything else
-      await signup(email.trim(), password, name.trim())
-      navigate(redirectTo, { replace: true })
+      // New accounts are always employees; Firestore rules reject anything else.
+      // Email/password accounts confirm their address before entering the workspace.
+      const { verificationError } = await signup(email.trim(), password, name.trim())
+      navigate('/verify-email', {
+        replace: true,
+        state: {
+          justSignedUp: true,
+          from: { pathname: redirectTo },
+          sendError: verificationError ? { code: verificationError.code, message: verificationError.message } : undefined
+        }
+      })
     } catch (err) {
       setError(friendlyAuthError(err, 'Signup failed. Please try again.'))
       setIsLoading(false)

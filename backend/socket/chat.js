@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const admin = require('../config/firebase-config');
 const allowedOrigins = require('../config/allowedOrigins');
 const Message = require('../models/Message');
+const isEmailVerified = require('../utils/emailVerified');
 
 const MAX_MESSAGE_LENGTH = 2000;
 const RATE_WINDOW_MS = 10 * 1000;
@@ -51,6 +52,7 @@ function initSocket(server) {
     if (!token) return next(new Error('unauthorized'));
     try {
       const decoded = await admin.auth().verifyIdToken(token);
+      if (!isEmailVerified(decoded)) return next(new Error('email-unverified'));
       socket.data.uid = decoded.uid;
       next();
     } catch {

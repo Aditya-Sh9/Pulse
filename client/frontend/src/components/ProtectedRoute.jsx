@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import PulseLoader from './PulseLoader'
 
 export default function ProtectedRoute({ children }) {
-  const { currentUser, loading } = useAuth()
+  const { currentUser, loading, needsVerification } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -13,6 +13,11 @@ export default function ProtectedRoute({ children }) {
 
   if (!currentUser) {
     return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  // Unconfirmed email/password accounts wait on the confirmation screen
+  if (needsVerification) {
+    return <Navigate to="/verify-email" replace state={{ from: location }} />
   }
 
   return children

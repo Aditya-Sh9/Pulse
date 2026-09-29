@@ -11,6 +11,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
+import VerifyEmail from './pages/VerifyEmail'
 
 // The workspace is split out of the landing/auth bundle and loaded per route
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -63,6 +64,7 @@ function App() {
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               </Route>
   
               <Route

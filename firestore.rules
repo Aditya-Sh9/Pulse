@@ -7,8 +7,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    // Email/password accounts must confirm their address; Google sign-ins are already verified
+    function verified() {
       return signedIn()
+        && (request.auth.token.get('email_verified', false) == true
+            || request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'password');
+    }
+
+    function isAdmin() {
+      return verified()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
@@ -27,24 +34,24 @@ service cloud.firestore {
     }
 
     match /spaces/{spaceId} {
-      allow read: if signedIn();
+      allow read: if verified();
       // Only admins can create or update spaces; deletes go through the backend (cascade)
       allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /projects/{projectId} {
-      allow read: if signedIn();
+      allow read: if verified();
       // Only admins can create or update projects; deletes go through the backend (cascade)
       allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /tasks/{taskId} {
-      allow read: if signedIn();
+      allow read: if verified();
 
       // Employees may only assign new tasks to themselves (or leave them unassigned)
-      allow create: if signedIn()
+      allow create: if verified()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
@@ -54,7 +61,7 @@ service cloud.firestore {
         && (isAdmin() || request.resource.data.assigneeId in ['', request.auth.uid]);
 
       // Status, completion and XP bookkeeping are server-only (PATCH /api/tasks/:id/status)
-      allow update: if signedIn()
+      allow update: if verified()
         && !changed().hasAny(serverTaskFields().concat(['status', 'createdBy']))
         && (isAdmin()
             || !changed().hasAny(['assigneeId'])
@@ -63,24 +70,25 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /comments/{commentId} {
-        allow read: if signedIn();
-        allow create: if signedIn()
+        allow read: if verified();
+        allow create: if verified()
           && request.resource.data.userId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 2000;
-        allow update, delete: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+        allow update, delete: if verified() && (resource.data.userId == request.auth.uid || isAdmin());
       }
 
       match /activities/{activityId} {
-        allow read: if signedIn();
-        allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+        allow read: if verified();
+        allow create: if verified() && request.resource.data.userId == request.auth.uid;
         allow update, delete: if isAdmin();
       }
     }
 
     match /users/{userId} {
-      allow read: if signedIn();
+      // Unverified users can still read their own profile (role lookup on the confirmation screen)
+      allow read: if verified() || (signedIn() && request.auth.uid == userId);
 
       // Self-signup always starts as an employee with zero XP
       allow create: if signedIn()
@@ -93,7 +101,7 @@ service cloud.firestore {
 
       // Users may edit their own profile fields, but never their role or XP
       allow update: if isAdmin()
-        || (request.auth.uid == userId
+        || (signedIn() && request.auth.uid == userId
             && changed().hasOnly(['name', 'notifications', 'status', 'updatedAt', 'favoriteProjects', 'savedFilters', 'desktopNotifications']));
 
       allow delete: if isAdmin();
@@ -101,26 +109,26 @@ service cloud.firestore {
 
     // Archived leaderboard seasons are written by the backend only
     match /seasons/{seasonId} {
-      allow read: if signedIn();
+      allow read: if verified();
       allow write: if false;
     }
 
     match /notifications/{notifId} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow read: if verified() && resource.data.userId == request.auth.uid;
 
       // Senders can't impersonate someone else
-      allow create: if signedIn()
+      allow create: if verified()
         && request.resource.data.senderId == request.auth.uid
         && request.resource.data.userId is string
         && request.resource.data.read == false
         && request.resource.data.message is string
         && request.resource.data.message.size() <= 500;
 
-      allow update: if signedIn()
+      allow update: if verified()
         && resource.data.userId == request.auth.uid
         && changed().hasOnly(['read']);
 
-      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if verified() && resource.data.userId == request.auth.uid;
     }
   }
 }

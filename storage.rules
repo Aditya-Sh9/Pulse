@@ -3,16 +3,23 @@ rules_version = '2';
 // Task and comment attachments live at tasks/{taskId}/{uploaderUid}/{fileName}
 service firebase.storage {
   match /b/{bucket}/o {
+    // Email/password accounts must confirm their address; Google sign-ins are already verified
+    function verified() {
+      return request.auth != null
+        && (request.auth.token.get('email_verified', false) == true
+            || request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'password');
+    }
+
     match /tasks/{taskId}/{uploaderId}/{fileName} {
-      allow read: if request.auth != null;
+      allow read: if verified();
 
       // Only as yourself, max 10 MB, and no executable/HTML content that could be served back
-      allow create: if request.auth != null
+      allow create: if verified()
         && request.auth.uid == uploaderId
         && request.resource.size < 10 * 1024 * 1024
         && !request.resource.contentType.matches('text/html.*|application/(x-msdownload|x-sh|javascript).*|image/svg.*');
 
-      allow delete: if request.auth != null && request.auth.uid == uploaderId;
+      allow delete: if verified() && request.auth.uid == uploaderId;
     }
 
     match /{allPaths=**} {

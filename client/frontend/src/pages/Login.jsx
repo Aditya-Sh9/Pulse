@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Mail, Lock, ArrowRight } from 'lucide-react'
 import { AuthForm, AuthField, AuthError, PrimaryButton, GoogleButton, Divider } from '../components/auth/AuthShell'
 import { useAuthSwitch } from '../components/auth/authSwitch'
-import { useAuth, friendlyAuthError } from '../context/AuthContext'
+import { useAuth, friendlyAuthError, needsEmailVerification } from '../context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -45,8 +45,13 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      await login(email, password, rememberMe)
-      navigate(redirectTo, { replace: true })
+      const user = await login(email, password, rememberMe)
+      // Unconfirmed accounts go to the confirmation screen, then on to where they were headed
+      if (needsEmailVerification(user)) {
+        navigate('/verify-email', { replace: true, state: { from: { pathname: redirectTo } } })
+      } else {
+        navigate(redirectTo, { replace: true })
+      }
     } catch (err) {
       setError(friendlyAuthError(err, 'Login failed. Please try again.'))
       setIsLoading(false)

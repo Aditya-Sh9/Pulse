@@ -10,6 +10,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile
 } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore'
@@ -27,8 +28,19 @@ const AUTH_ERRORS = {
   'auth/too-many-requests': 'Too many attempts. Wait a moment and try again.',
   'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
   'auth/network-request-failed': 'Network error. Check your connection and try again.',
-  'auth/user-disabled': 'This account has been disabled. Contact your workspace admin.'
+  'auth/user-disabled': 'This account has been disabled. Contact your workspace admin.',
+  'auth/user-token-expired': 'Your session expired. Please log in again.',
+  'auth/requires-recent-login': 'Your session expired. Please log in again.',
+  'auth/unauthorized-continue-uri': 'This site’s domain isn’t authorised in Firebase yet, so the email can’t be sent. Ask the workspace admin to add it under Authentication → Authorized domains.',
+  'auth/invalid-continue-uri': 'The confirmation link is misconfigured. Ask the workspace admin to check the app URL.',
+  'auth/missing-continue-uri': 'The confirmation link is misconfigured. Ask the workspace admin to check the app URL.',
+  'auth/quota-exceeded': 'The email service has hit its sending limit for now. Try again later.',
+  'auth/internal-error': 'The email service had a temporary problem. Try again in a moment.'
 }
+
+// Email/password accounts must confirm their address; Google accounts arrive verified
+export const needsEmailVerification = (user) =>
+  !!user && !user.emailVerified && user.providerData.some(p => p.providerId === 'password')
 
 export const friendlyAuthError = (err, fallback = 'Something went wrong. Please try again.') =>
   AUTH_ERRORS[err?.code] || fallback
@@ -56,14 +68,31 @@ export const AuthProvider = ({ children }) => {
     })
   }
 
-  // Signup with email and password
+  // The link in the email lands on the dashboard; the waiting tab also detects it and continues on its own
+  const sendVerification = useCallback(async () => {
+    if (!auth.currentUser) {
+      const err = new Error('Your session expired. Please log in again.')
+      err.code = 'auth/user-token-expired'
+      throw err
+    }
+    await sendEmailVerification(auth.currentUser, { url: `${window.location.origin}/dashboard` })
+  }, [])
+
+  // Signup with email and password. Returns { user, verificationError } so a failed
+  // email send doesn't look like a failed signup (the account already exists).
   const signup = async (email, password, name) => {
     const result = await createUserWithEmailAndPassword(auth, email, password)
     // Without this, email signups have no displayName anywhere in the app
     await updateProfile(result.user, { displayName: name })
     await createUserDocument(result.user.uid, email, name)
+    let verificationError = null
+    try {
+      await sendVerification()
+    } catch (err) {
+      verificationError = err
+    }
     setProfileVersion(v => v + 1)
-    return result.user
+    return { user: result.user, verificationError }
   }
 
   // Login with email and password
@@ -98,6 +127,19 @@ export const AuthProvider = ({ children }) => {
   // Helper: Get secure ID Token for Node.js Backend API
   const getAuthToken = useCallback(async () => {
     return auth.currentUser ? auth.currentUser.getIdToken() : null
+  }, [])
+
+  // Re-read the user from Firebase; once verified, refresh the ID token so the backend
+  // and Firestore rules see `email_verified: true`. Returns the current verified state.
+  const refreshVerification = useCallback(async () => {
+    if (!auth.currentUser) return false
+    await auth.currentUser.reload()
+    const verified = !needsEmailVerification(auth.currentUser)
+    if (verified) {
+      await auth.currentUser.getIdToken(true)
+      setProfileVersion(v => v + 1)
+    }
+    return verified
   }, [])
 
   // Re-read the Auth profile (e.g. after the backend changed displayName) and refresh the token claims
@@ -153,6 +195,9 @@ export const AuthProvider = ({ children }) => {
     login,
     googleSignIn,
     resetPassword,
+    sendVerification,
+    refreshVerification,
+    needsVerification: needsEmailVerification(currentUser),
     logout,
     getAuthToken,
     refreshUser

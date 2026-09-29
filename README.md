@@ -23,7 +23,7 @@ Pulse is a full-stack, real-time task workspace for small teams. It combines pro
 *   **XP & leaderboard:** 10 XP per completed task (awarded server-side to the assignee), a daily XP cap to prevent farming, admin XP adjustments, and archived **seasons** with past standings.
 
 **Security & roles**
-*   Firebase Authentication; every API route and socket connection verifies the Firebase ID token (revoked tokens are rejected).
+*   Firebase Authentication with required email confirmation; every API route and socket connection verifies the Firebase ID token (revoked or unconfirmed accounts are rejected).
 *   Admin/employee roles enforced by Firestore rules: users can't promote themselves, edit their own XP, impersonate others or read other people's notifications.
 *   Task status and XP are server-authoritative; Helmet security headers, strict CORS and rate limiting on the API.
 
@@ -93,9 +93,15 @@ This also creates the composite indexes in `firestore.indexes.json`.
 
 > **Attachments need Cloud Storage.** Enable Storage in the Firebase console (new projects need the Blaze pay-as-you-go plan for a default bucket). Without it everything else works; uploads just show an error.
 
-### 4. Password-reset emails
+### 4. Account emails (confirmation and password reset)
 
-"Forgot password?" uses Firebase Auth's built-in reset email and returns people to `/login` afterwards. Add your frontend domain under **Authentication → Settings → Authorized domains**, and customise the sender name/template under **Authentication → Templates**.
+New email/password accounts must **confirm their email** before they can use the workspace (Google sign-ins are already verified). After signing up, people see a confirmation screen that continues into the app automatically once they click the link, with a rate-limited **Resend** button and clear error messages if sending fails. The API, sockets and Firestore/Storage rules all enforce this, so the screen can't be bypassed.
+
+"Forgot password?" uses Firebase Auth's built-in reset email and returns people to `/login` afterwards.
+
+For both emails, add your frontend domain under **Authentication → Settings → Authorized domains** (otherwise sending fails with an "unauthorised domain" message), and customise the sender name and text for **Email address verification** and **Password reset** under **Authentication → Templates**.
+
+> Existing email/password accounts that were never confirmed will be asked to confirm on their next visit.
 
 ### 5. Create the first admin
 

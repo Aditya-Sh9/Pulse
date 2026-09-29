@@ -46,9 +46,11 @@ export function AuthLayout() {
   // Every route: slide the switch pill under the active mode, bring the form in
   useGSAP(() => {
     leaving.current = false
-    const tab = tabs.current[order(pathname)]
+    const isMode = MODES.some((m) => m.path === pathname)
+    const tab = isMode ? tabs.current[order(pathname)] : null
     const instant = reduced() || gsap.getProperty(pill.current, 'width') === 0
-    if (tab) gsap.to(pill.current, { x: tab.offsetLeft, width: tab.offsetWidth, duration: instant ? 0 : 0.5, ease: 'expo.out' })
+    if (tab) gsap.to(pill.current, { x: tab.offsetLeft, width: tab.offsetWidth, autoAlpha: 1, duration: instant ? 0 : 0.5, ease: 'expo.out' })
+    else gsap.set(pill.current, { autoAlpha: 0 })
 
     if (reduced()) return
     const dir = direction.current
